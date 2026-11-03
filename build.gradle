@@ -1,0 +1,16 @@
+plugins { id 'java'; id 'net.neoforged.moddev' version '2.0.141' }
+group = 'cn.bfm'
+version = '1.5.7'
+base.archivesName = 'battlefield-movement'
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+neoForge {
+    version = '21.1.233'
+    runs { client { client() }; server { server(); programArgument '--nogui' } }
+    mods { battlefield_movement { sourceSet sourceSets.main } }
+}
+repositories { flatDir { dirs 'libs' } }
+dependencies {
+    // Runtime companions are supplied by the pack; these are compile-only.
+    compileOnly files('libs/tacz.jar', 'libs/playeranimator.jar')
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }

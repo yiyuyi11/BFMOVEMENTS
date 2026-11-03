@@ -1,0 +1,26 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "cn.bfm.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "EyeHeightMixin",
+    "TaczBulletOriginMixin",
+    "ForcedPoseMixin",
+    "LivingEntityJumpMixin",
+    "TaczCrawlPoseGuardServerMixin"
+  ],
+  "client": [
+    "ProneSwimAnimationMixin",
+    "CameraMixin",
+    "PlayerModelMixin",
+    "PlayerRendererMixin",
+    "TaczCrawlKeyMixin",
+    "TaczCrawlPoseGuardClientMixin",
+    "TaczProneAnimatorMixin",
+    "TaczAnimationOwnerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

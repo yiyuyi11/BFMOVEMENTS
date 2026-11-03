@@ -1,0 +1,6 @@
+{
+  "key.categories.battlefield_movement": "Battlefield Movement",
+  "key.battlefield_movement.prone": "Prone / stand (sprint to dive)",
+  "key.battlefield_movement.slide": "Slide",
+  "message.battlefield_movement.no_room": "Not enough headroom to stand up"
+}

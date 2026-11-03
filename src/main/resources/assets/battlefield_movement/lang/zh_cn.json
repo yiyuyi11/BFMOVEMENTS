@@ -1,0 +1,6 @@
+{
+  "key.categories.battlefield_movement": "战地机动",
+  "key.battlefield_movement.prone": "趴下 / 起身（冲刺时飞扑）",
+  "key.battlefield_movement.slide": "滑铲",
+  "message.battlefield_movement.no_room": "上方空间不足，无法站起"
+}

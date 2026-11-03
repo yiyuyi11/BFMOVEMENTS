@@ -1,0 +1,17 @@
+package cn.bfm.client;
+
+import cn.bfm.ActionEyeHeight;
+
+/** Server-owned gameplay height; local config is only a pre-login fallback. */
+public final class ServerEyeSettings {
+    private static float slide = -1.0F, dive = -1.0F;
+    public static void accept(float s, float d) {
+        if (Float.isFinite(s) && Float.isFinite(d) && s >= 0.08F && d >= 0.08F && s <= 1.62F && d <= 1.62F) {
+            slide = s; dive = d;
+        }
+    }
+    public static float slide() { return slide < 0 ? ActionEyeHeight.slideHeight() : slide; }
+    public static float dive() { return dive < 0 ? ActionEyeHeight.diveHeight() : dive; }
+    public static void reset() { slide = dive = -1.0F; }
+    private ServerEyeSettings() {}
+}
