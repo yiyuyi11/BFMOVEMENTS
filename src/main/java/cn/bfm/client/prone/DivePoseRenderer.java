@@ -25,6 +25,7 @@ public final class DivePoseRenderer {
     private static final Map<Integer, Float> YAW = new HashMap<>();
 
     public static void begin(AbstractClientPlayer player, PoseStack stack, float partial) {
+        if (!cn.bfm.BattlefieldMovement.enabled()) return;
         if (!DiveClient.isDiving(player)) {
             YAW.remove(player.getId());
             return;

@@ -5,6 +5,8 @@ import net.minecraftforge.common.ForgeConfigSpec;
 /** Tuning knobs. Defaults are deliberately short: a slide is a commitment, not a movement tech. */
 public final class BfmConfig {
     public static final ForgeConfigSpec SPEC;
+    /** Master switch: off means this mod does nothing at all. */
+    public static final ForgeConfigSpec.BooleanValue MASTER_ENABLED;
 
     public static final ForgeConfigSpec.BooleanValue SLIDE_ENABLED;
     public static final ForgeConfigSpec.BooleanValue SLIDE_ON_SNEAK;
@@ -29,6 +31,8 @@ public final class BfmConfig {
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
+        MASTER_ENABLED = b.comment("Master switch for the whole movement mod (slide, dive, prone, camera drops).")
+                .define("enabled", true);
         b.push("slide");
         SLIDE_ENABLED = b.comment("Enable the short combat slide.").define("enabled", true);
         SLIDE_ON_SNEAK = b.comment("Sprint + sneak (shift) starts a slide instead of crouching.")

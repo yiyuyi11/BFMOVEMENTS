@@ -23,6 +23,34 @@ import org.slf4j.Logger;
 public final class BattlefieldMovement {
     public static final String MODID = "battlefield_movement";
     public static final Logger LOG = LogUtils.getLogger();
+    /** Runtime override flipped by the client key; the config remains the persisted default. */
+    private static Boolean runtimeOverride;
+
+    public static boolean enabled() {
+        if (runtimeOverride != null) return runtimeOverride;
+        try {
+            return BfmConfig.MASTER_ENABLED == null || BfmConfig.MASTER_ENABLED.get();
+        } catch (RuntimeException | LinkageError notLoaded) {
+            return true;
+        }
+    }
+
+    /** Personal toggle (client key): does not write the config file. */
+    public static boolean toggleLocal() {
+        runtimeOverride = !enabled();
+        LOG.info("Battlefield Movement {}", runtimeOverride ? "enabled" : "disabled");
+        return runtimeOverride;
+    }
+
+    /** World toggle (/bfm toggle): persists through the common config. */
+    public static boolean toggleConfig() {
+        boolean next = !enabled();
+        runtimeOverride = null;
+        BfmConfig.MASTER_ENABLED.set(next);
+        BfmConfig.MASTER_ENABLED.save();
+        LOG.info("Battlefield Movement {} (config)", next ? "enabled" : "disabled");
+        return next;
+    }
 
     public BattlefieldMovement() {
         IEventBus modBus=net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus();
@@ -38,6 +66,24 @@ public final class BattlefieldMovement {
                     }));
         }
         MinecraftForge.EVENT_BUS.register(new CommonEvents());
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.RegisterCommandsEvent event) ->
+                event.getDispatcher().register(com.mojang.brigadier.builder.LiteralArgumentBuilder
+                        .<net.minecraft.commands.CommandSourceStack>literal("bfm")
+                        .executes(ctx -> {
+                            boolean on = enabled();
+                            ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(
+                                    "Battlefield Movement: " + (on ? "on" : "off")), false);
+                            return 1;
+                        })
+                        .then(com.mojang.brigadier.builder.LiteralArgumentBuilder
+                                .<net.minecraft.commands.CommandSourceStack>literal("toggle")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    boolean on = toggleConfig();
+                                    ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(
+                                            "Battlefield Movement " + (on ? "enabled" : "disabled")), true);
+                                    return 1;
+                                }))));
         if (FMLEnvironment.dist == Dist.CLIENT) {
             cn.bfm.client.ClientEvents.init();
             LOG.info("Battlefield Movement client ready: slide + prone share the stance key");

@@ -106,6 +106,7 @@ public final class PronePoseRenderer {
     }
 
     public static void begin(AbstractClientPlayer player, PoseStack stack, float partial) {
+        if (!cn.bfm.BattlefieldMovement.enabled()) return;
         int phase = ProneClient.phase(player);
         int previousPhase = LAST_PHASE.getOrDefault(player.getId(), -1);
         if (previousPhase != phase) {

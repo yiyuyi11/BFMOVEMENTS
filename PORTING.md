@@ -4,9 +4,9 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 产物 | `battlefield_movement-1.6.3-forge1201.jar` |
-| 版本 | `1.6.3-forge1201` |
-| SHA-256 | `2edc286f3bf402bb46254447c085ff34e094d66e44d5031edea8b4e7dabaae6a` |
+| 产物 | `battlefield_movement-1.7.0-forge1201.jar` |
+| 版本 | `1.7.0-forge1201` |
+| SHA-256 | `8df4a7a21f24fde6368811779f19b5aa65d23c4bdc40059bc9c9f450f03d42cf` |
 | mixin refmap | 已生成 |
 | 依赖版本范围 | forge `[47,)`，minecraft `[1.20.1,1.20.2)` |
 

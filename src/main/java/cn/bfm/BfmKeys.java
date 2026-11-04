@@ -20,10 +20,14 @@ public final class BfmKeys {
             "key.battlefield_movement.prone", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
     public static final KeyMapping SLIDE = new KeyMapping(
             "key.battlefield_movement.slide", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT, CATEGORY);
+    /** Unbound by default: a personal on/off switch for the whole mod. */
+    public static final KeyMapping TOGGLE = new KeyMapping(
+            "key.battlefield_movement.toggle", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
 
     public static void register(RegisterKeyMappingsEvent event) {
         event.register(PRONE);
         event.register(SLIDE);
+        event.register(TOGGLE);
     }
 
     private BfmKeys() {

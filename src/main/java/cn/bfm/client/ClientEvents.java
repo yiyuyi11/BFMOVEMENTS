@@ -48,6 +48,22 @@ public final class ClientEvents {
             lastRequest=Long.MIN_VALUE;desiredDown=false;slideBuffer=0;
             return;
         }
+        if (BfmKeys.TOGGLE.consumeClick()) {
+            boolean on = cn.bfm.BattlefieldMovement.toggleLocal();
+            if (client.player != null) {
+                client.player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                        "Battlefield Movement " + (on ? "on" : "off")), true);
+            }
+        }
+        if (!cn.bfm.BattlefieldMovement.enabled()) {
+            SlideClient.reset();
+            DiveClient.reset();
+            ProneClient.reset();
+            PronePoseRenderer.reset();
+            CameraSmoother.reset();
+            proneHeld = false;
+            return;
+        }
         handleKeys(client);
         SlideClient.tick(client);
         DiveClient.tick(client);
