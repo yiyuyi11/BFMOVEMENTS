@@ -15,6 +15,7 @@
     "ProneSwimAnimationMixin",
     "CameraMixin",
     "PlayerModelMixin",
+    "SlideCapeMixin",
     "PlayerRendererMixin",
     "TaczCrawlKeyMixin",
     "TaczCrawlPoseGuardClientMixin",
