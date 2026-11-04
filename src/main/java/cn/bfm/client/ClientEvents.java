@@ -49,7 +49,8 @@ public final class ClientEvents {
             return;
         }
         if (BfmKeys.TOGGLE.consumeClick()) {
-            boolean on = cn.bfm.BattlefieldMovement.toggleLocal();
+            cn.bfm.BfmNetwork.sendToServer(new cn.bfm.network.MasterTogglePayload(!cn.bfm.BattlefieldMovement.enabled()));
+            boolean on = cn.bfm.BattlefieldMovement.enabled();
             if (client.player != null) {
                 client.player.displayClientMessage(net.minecraft.network.chat.Component.literal(
                         "Battlefield Movement " + (on ? "on" : "off")), true);

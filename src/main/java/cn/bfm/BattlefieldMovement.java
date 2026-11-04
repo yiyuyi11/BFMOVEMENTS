@@ -25,14 +25,31 @@ public final class BattlefieldMovement {
     public static final Logger LOG = LogUtils.getLogger();
     /** Runtime override flipped by the client key; the config remains the persisted default. */
     private static Boolean runtimeOverride;
+    /** State the server pushed; null until the first message arrives. */
+    private static volatile Boolean remoteEnabled;
 
     public static boolean enabled() {
         if (runtimeOverride != null) return runtimeOverride;
+        if (remoteEnabled != null) return remoteEnabled;
         try {
             return BfmConfig.MASTER_ENABLED == null || BfmConfig.MASTER_ENABLED.get();
         } catch (RuntimeException | LinkageError notLoaded) {
             return true;
         }
+    }
+
+    /** Where the current answer comes from, for /bfm and the client feedback message. */
+    public static String source() {
+        if (runtimeOverride != null) return "local key";
+        if (remoteEnabled != null) return "server";
+        return "server config";
+    }
+
+    /** Applied on the client when the server pushes its state. A server "on" clears a stale local override. */
+    public static void acceptRemote(boolean state) {
+        remoteEnabled = state;
+        if (state) runtimeOverride = null;
+        LOG.info("Battlefield Movement {} by server", state ? "enabled" : "disabled");
     }
 
     /** Personal toggle (client key): does not write the config file. */
@@ -46,6 +63,7 @@ public final class BattlefieldMovement {
     public static boolean toggleConfig() {
         boolean next = !enabled();
         runtimeOverride = null;
+        remoteEnabled = null;
         BfmConfig.MASTER_ENABLED.set(next);
         BfmConfig.MASTER_ENABLED.save();
         LOG.info("Battlefield Movement {} (config)", next ? "enabled" : "disabled");
@@ -72,7 +90,7 @@ public final class BattlefieldMovement {
                         .executes(ctx -> {
                             boolean on = enabled();
                             ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(
-                                    "Battlefield Movement: " + (on ? "on" : "off")), false);
+                                    "Battlefield Movement: " + (on ? "on" : "off") + " (" + source() + ")"), false);
                             return 1;
                         })
                         .then(com.mojang.brigadier.builder.LiteralArgumentBuilder
@@ -80,6 +98,7 @@ public final class BattlefieldMovement {
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
                                     boolean on = toggleConfig();
+                                    MasterSwitch.broadcast();
                                     ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(
                                             "Battlefield Movement " + (on ? "enabled" : "disabled")), true);
                                     return 1;

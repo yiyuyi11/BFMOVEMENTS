@@ -30,6 +30,15 @@ public final class BfmNetwork {
   CHANNEL.messageBuilder(DiveSyncPayload.class,5,NetworkDirection.PLAY_TO_CLIENT).encoder(DiveSyncPayload::encode).decoder(DiveSyncPayload::decode).consumerMainThread((p,ctx)->{
    if(FMLEnvironment.dist==Dist.CLIENT)cn.bfm.client.ClientNetwork.onDiveSync(p);ctx.get().setPacketHandled(true);
   }).add();
+  CHANNEL.messageBuilder(cn.bfm.network.MasterStatePayload.class,7,NetworkDirection.PLAY_TO_CLIENT).encoder(cn.bfm.network.MasterStatePayload::encode).decoder(cn.bfm.network.MasterStatePayload::decode).consumerMainThread((p,ctx)->{
+   if(FMLEnvironment.dist==Dist.CLIENT)BattlefieldMovement.acceptRemote(p.enabled());ctx.get().setPacketHandled(true);
+  }).add();
+  CHANNEL.messageBuilder(cn.bfm.network.MasterTogglePayload.class,8,NetworkDirection.PLAY_TO_SERVER).encoder(cn.bfm.network.MasterTogglePayload::encode).decoder(cn.bfm.network.MasterTogglePayload::decode).consumerMainThread((p,ctx)->{
+   var player=ctx.get().getSender();if(player!=null){
+    if(!player.hasPermissions(2)){MasterSwitch.sendTo(player);}
+    else{if(BattlefieldMovement.enabled()!=p.enabled())BattlefieldMovement.toggleConfig();MasterSwitch.broadcast();}
+   }ctx.get().setPacketHandled(true);
+  }).add();
   CHANNEL.messageBuilder(MovementSettingsPayload.class,6,NetworkDirection.PLAY_TO_CLIENT).encoder(MovementSettingsPayload::encode).decoder(MovementSettingsPayload::decode).consumerMainThread((p,ctx)->{
    if(FMLEnvironment.dist==Dist.CLIENT)cn.bfm.client.ServerEyeSettings.accept(p.slideEyeHeight(),p.diveEyeHeight());ctx.get().setPacketHandled(true);
   }).add();

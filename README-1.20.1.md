@@ -10,7 +10,7 @@
 
 ## 安装
 
-把 `battlefield_movement-1.7.0-forge1201.jar` 放进 `mods/`。
+把 `battlefield_movement-1.7.1-forge1201.jar` 放进 `mods/`。
 
 ## 构建
 
