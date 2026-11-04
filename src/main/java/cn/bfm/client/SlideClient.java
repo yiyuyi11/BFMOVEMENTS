@@ -10,7 +10,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -94,7 +94,7 @@ public final class SlideClient {
         ticks = 0;
         suppressSneak = viaSneak;
         player.setSprinting(false);
-        PacketDistributor.sendToServer(
+        cn.bfm.BfmNetwork.sendToServer(
                 new SlidePayload(true, BfmConfig.SLIDE_MAX_TICKS.get(), (float) dirX, (float) dirZ));
         AnimController.onSlide(player.getId(), true);
         if (BfmConfig.SLIDE_PARTICLES.get()) {
@@ -169,7 +169,7 @@ public final class SlideClient {
         cooldown = BfmConfig.SLIDE_COOLDOWN_TICKS.get();
         AnimController.onSlide(player == null ? -1 : player.getId(), false);
         if (send && player != null) {
-            PacketDistributor.sendToServer(new SlidePayload(false, 0, 0.0F, 0.0F));
+            cn.bfm.BfmNetwork.sendToServer(new SlidePayload(false, 0, 0.0F, 0.0F));
         }
     }
 

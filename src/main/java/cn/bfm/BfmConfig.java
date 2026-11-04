@@ -1,34 +1,34 @@
 package cn.bfm;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 /** Tuning knobs. Defaults are deliberately short: a slide is a commitment, not a movement tech. */
 public final class BfmConfig {
-    public static final ModConfigSpec SPEC;
+    public static final ForgeConfigSpec SPEC;
 
-    public static final ModConfigSpec.BooleanValue SLIDE_ENABLED;
-    public static final ModConfigSpec.BooleanValue SLIDE_ON_SNEAK;
-    public static final ModConfigSpec.DoubleValue SLIDE_SPEED;
-    public static final ModConfigSpec.DoubleValue SLIDE_FRICTION;
-    public static final ModConfigSpec.IntValue SLIDE_MAX_TICKS;
-    public static final ModConfigSpec.IntValue SLIDE_COOLDOWN_TICKS;
-    public static final ModConfigSpec.DoubleValue SLIDE_CAMERA_DROP;
-    public static final ModConfigSpec.BooleanValue SLIDE_PARTICLES;
-    public static final ModConfigSpec.BooleanValue SLIDE_REQUIRE_SPRINT;
+    public static final ForgeConfigSpec.BooleanValue SLIDE_ENABLED;
+    public static final ForgeConfigSpec.BooleanValue SLIDE_ON_SNEAK;
+    public static final ForgeConfigSpec.DoubleValue SLIDE_SPEED;
+    public static final ForgeConfigSpec.DoubleValue SLIDE_FRICTION;
+    public static final ForgeConfigSpec.IntValue SLIDE_MAX_TICKS;
+    public static final ForgeConfigSpec.IntValue SLIDE_COOLDOWN_TICKS;
+    public static final ForgeConfigSpec.DoubleValue SLIDE_CAMERA_DROP;
+    public static final ForgeConfigSpec.BooleanValue SLIDE_PARTICLES;
+    public static final ForgeConfigSpec.BooleanValue SLIDE_REQUIRE_SPRINT;
 
-    public static final ModConfigSpec.BooleanValue DIVE_ENABLED;
-    public static final ModConfigSpec.DoubleValue DIVE_SPEED;
-    public static final ModConfigSpec.DoubleValue DIVE_UP;
-    public static final ModConfigSpec.IntValue DIVE_COOLDOWN_TICKS;
-    public static final ModConfigSpec.DoubleValue DIVE_CAMERA_DROP;
+    public static final ForgeConfigSpec.BooleanValue DIVE_ENABLED;
+    public static final ForgeConfigSpec.DoubleValue DIVE_SPEED;
+    public static final ForgeConfigSpec.DoubleValue DIVE_UP;
+    public static final ForgeConfigSpec.IntValue DIVE_COOLDOWN_TICKS;
+    public static final ForgeConfigSpec.DoubleValue DIVE_CAMERA_DROP;
 
-    public static final ModConfigSpec.BooleanValue PRONE_ENABLED;
-    public static final ModConfigSpec.BooleanValue PRONE_HOLD;
-    public static final ModConfigSpec.DoubleValue PRONE_SPEED_PENALTY;
-    public static final ModConfigSpec.DoubleValue PRONE_GROUND_LIFT;
+    public static final ForgeConfigSpec.BooleanValue PRONE_ENABLED;
+    public static final ForgeConfigSpec.BooleanValue PRONE_HOLD;
+    public static final ForgeConfigSpec.DoubleValue PRONE_SPEED_PENALTY;
+    public static final ForgeConfigSpec.DoubleValue PRONE_GROUND_LIFT;
 
     static {
-        ModConfigSpec.Builder b = new ModConfigSpec.Builder();
+        ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         b.push("slide");
         SLIDE_ENABLED = b.comment("Enable the short combat slide.").define("enabled", true);
         SLIDE_ON_SNEAK = b.comment("Sprint + sneak (shift) starts a slide instead of crouching.")

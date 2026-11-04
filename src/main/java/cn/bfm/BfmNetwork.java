@@ -1,91 +1,43 @@
 package cn.bfm;
-
-import cn.bfm.network.DivePayload;
-import cn.bfm.network.DiveSyncPayload;
-import cn.bfm.network.ProneRequestPayload;
-import cn.bfm.network.ProneSyncPayload;
-import cn.bfm.network.SlidePayload;
-import cn.bfm.network.SlideSyncPayload;
-import cn.bfm.network.MovementSettingsPayload;
+import cn.bfm.network.*;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import net.minecraft.world.entity.Entity;
+import net.minecraftforge.network.*;
+import net.minecraftforge.network.simple.SimpleChannel;
+import net.minecraftforge.fml.loading.FMLEnvironment;
+import net.minecraftforge.api.distmarker.Dist;
 
-/** One registrar for all movement payloads. */
 public final class BfmNetwork {
-    public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("3");
-        registrar.playToClient(MovementSettingsPayload.TYPE, MovementSettingsPayload.CODEC, (payload, context) ->
-                context.enqueueWork(() -> {
-                    if (FMLEnvironment.dist == Dist.CLIENT) cn.bfm.client.ServerEyeSettings.accept(
-                            payload.slideEyeHeight(), payload.diveEyeHeight());
-                }));
-        registrar.playToServer(ProneRequestPayload.TYPE, ProneRequestPayload.CODEC, BfmNetwork::onProneRequest);
-        registrar.playToServer(SlidePayload.TYPE, SlidePayload.CODEC, BfmNetwork::onSlide);
-        registrar.playToServer(DivePayload.TYPE, DivePayload.CODEC, BfmNetwork::onDive);
-        registrar.playToClient(ProneSyncPayload.TYPE, ProneSyncPayload.CODEC, BfmNetwork::onProneSync);
-        registrar.playToClient(SlideSyncPayload.TYPE, SlideSyncPayload.CODEC, BfmNetwork::onSlideSync);
-        registrar.playToClient(DiveSyncPayload.TYPE, DiveSyncPayload.CODEC, BfmNetwork::onDiveSync);
-    }
-
-    private static void onProneRequest(ProneRequestPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
-                ProneManager.request(player, payload.down(), payload.instant());
-            }
-        });
-    }
-
-    private static void onSlide(SlidePayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
-                if (payload.active()) sendEyeSettings(player);
-                SlideServer.accept(player, payload);
-            }
-        });
-    }
-
-    private static void onDive(DivePayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
-                if (payload.active()) sendEyeSettings(player);
-                DiveServer.accept(player, payload);
-            }
-        });
-    }
-
-    private static void onProneSync(ProneSyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
-                cn.bfm.client.ClientNetwork.onProneSync(payload);
-            }
-        });
-    }
-
-    private static void onSlideSync(SlideSyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
-                cn.bfm.client.ClientNetwork.onSlideSync(payload);
-            }
-        });
-    }
-
-    private static void onDiveSync(DiveSyncPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
-                cn.bfm.client.ClientNetwork.onDiveSync(payload);
-            }
-        });
-    }
-
-    public static void sendEyeSettings(ServerPlayer player) {
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
-                new MovementSettingsPayload(ActionEyeHeight.slideHeight(), ActionEyeHeight.diveHeight()));
-    }
-
-    private BfmNetwork() {
-    }
+ private static final String VERSION="forge1201-3";
+ private static final SimpleChannel CHANNEL=NetworkRegistry.newSimpleChannel(new ResourceLocation("battlefield_movement","main"),()->VERSION,VERSION::equals,VERSION::equals);
+ public static void register(){
+  CHANNEL.messageBuilder(ProneRequestPayload.class,0,NetworkDirection.PLAY_TO_SERVER).encoder(ProneRequestPayload::encode).decoder(ProneRequestPayload::decode).consumerMainThread((p,ctx)->{
+   var player=ctx.get().getSender();if(player!=null)ProneManager.request(player,p.down(),p.instant());ctx.get().setPacketHandled(true);
+  }).add();
+  CHANNEL.messageBuilder(SlidePayload.class,1,NetworkDirection.PLAY_TO_SERVER).encoder(SlidePayload::encode).decoder(SlidePayload::decode).consumerMainThread((p,ctx)->{
+   var player=ctx.get().getSender();if(player!=null){if(p.active())sendEyeSettings(player);SlideServer.accept(player,p);}ctx.get().setPacketHandled(true);
+  }).add();
+  CHANNEL.messageBuilder(DivePayload.class,2,NetworkDirection.PLAY_TO_SERVER).encoder(DivePayload::encode).decoder(DivePayload::decode).consumerMainThread((p,ctx)->{
+   var player=ctx.get().getSender();if(player!=null){if(p.active())sendEyeSettings(player);DiveServer.accept(player,p);}ctx.get().setPacketHandled(true);
+  }).add();
+  CHANNEL.messageBuilder(ProneSyncPayload.class,3,NetworkDirection.PLAY_TO_CLIENT).encoder(ProneSyncPayload::encode).decoder(ProneSyncPayload::decode).consumerMainThread((p,ctx)->{
+   if(FMLEnvironment.dist==Dist.CLIENT)cn.bfm.client.ClientNetwork.onProneSync(p);ctx.get().setPacketHandled(true);
+  }).add();
+  CHANNEL.messageBuilder(SlideSyncPayload.class,4,NetworkDirection.PLAY_TO_CLIENT).encoder(SlideSyncPayload::encode).decoder(SlideSyncPayload::decode).consumerMainThread((p,ctx)->{
+   if(FMLEnvironment.dist==Dist.CLIENT)cn.bfm.client.ClientNetwork.onSlideSync(p);ctx.get().setPacketHandled(true);
+  }).add();
+  CHANNEL.messageBuilder(DiveSyncPayload.class,5,NetworkDirection.PLAY_TO_CLIENT).encoder(DiveSyncPayload::encode).decoder(DiveSyncPayload::decode).consumerMainThread((p,ctx)->{
+   if(FMLEnvironment.dist==Dist.CLIENT)cn.bfm.client.ClientNetwork.onDiveSync(p);ctx.get().setPacketHandled(true);
+  }).add();
+  CHANNEL.messageBuilder(MovementSettingsPayload.class,6,NetworkDirection.PLAY_TO_CLIENT).encoder(MovementSettingsPayload::encode).decoder(MovementSettingsPayload::decode).consumerMainThread((p,ctx)->{
+   if(FMLEnvironment.dist==Dist.CLIENT)cn.bfm.client.ServerEyeSettings.accept(p.slideEyeHeight(),p.diveEyeHeight());ctx.get().setPacketHandled(true);
+  }).add();
+ }
+ public static void sendToServer(Object packet){CHANNEL.sendToServer(packet);}
+ public static void sendToPlayer(ServerPlayer player,Object packet){CHANNEL.send(PacketDistributor.PLAYER.with(()->player),packet);}
+ public static void sendToPlayersTrackingEntity(Entity entity,Object packet){CHANNEL.send(PacketDistributor.TRACKING_ENTITY.with(()->entity),packet);}
+ public static void sendToPlayersTrackingEntityAndSelf(Entity entity,Object packet){CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(()->entity),packet);}
+ public static void sendEyeSettings(ServerPlayer player){sendToPlayer(player,new MovementSettingsPayload(ActionEyeHeight.slideHeight(),ActionEyeHeight.diveHeight()));}
+ private BfmNetwork(){}
 }

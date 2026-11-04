@@ -3,8 +3,8 @@ package cn.bfm.client;
 import cn.bfm.network.DiveSyncPayload;
 import cn.bfm.network.ProneSyncPayload;
 import cn.bfm.network.SlideSyncPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 /** Entry point for packets that only exist on the client. */
 @OnlyIn(Dist.CLIENT)

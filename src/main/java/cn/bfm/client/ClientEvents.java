@@ -7,15 +7,15 @@ import cn.bfm.network.ProneRequestPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.Input;
 import net.minecraft.client.player.LocalPlayer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
-import net.neoforged.neoforge.client.event.ViewportEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.event.TickEvent.ClientTickEvent;
+import net.minecraftforge.client.event.MovementInputUpdateEvent;
+import net.minecraftforge.client.event.ViewportEvent;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
+import net.minecraftforge.network.PacketDistributor;
 
 /** Client tick, input and lifecycle wiring. */
 @EventBusSubscriber(modid = cn.bfm.BattlefieldMovement.MODID, value = Dist.CLIENT)
@@ -31,7 +31,8 @@ public final class ClientEvents {
     }
 
     @SubscribeEvent
-    public static void clientTick(ClientTickEvent.Post event) {
+    public static void clientTick(ClientTickEvent event) {
+        if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
         Minecraft client = Minecraft.getInstance();
         if (client.level == null || client.player == null) {
             SlideClient.reset();
@@ -58,8 +59,9 @@ public final class ClientEvents {
 
     /** Applied after the entity tick so ground friction cannot eat the burst. */
     @SubscribeEvent
-    public static void playerTick(PlayerTickEvent.Post event) {
-        if (event.getEntity() instanceof LocalPlayer player && player.level().isClientSide()) {
+    public static void playerTick(PlayerTickEvent event) {
+        if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
+        if (event.player instanceof LocalPlayer player && player.level().isClientSide()) {
             SlideClient.applyVelocity(player);
             DiveClient.applyVelocity(player);
         }
@@ -100,19 +102,33 @@ public final class ClientEvents {
         lastRequest=Long.MIN_VALUE;desiredDown=false;slideBuffer=0;
     }
 
+    private static long rollReportedAt;
+
     @SubscribeEvent
     public static void cameraAngles(ViewportEvent.ComputeCameraAngles event) {
         if (event.getCamera().getEntity() instanceof LocalPlayer) {
-            float partial = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
+            float partial = Minecraft.getInstance().getFrameTime();
             // Do not tilt the aim ray independently of the rotation sent to the server.
-            event.setRoll(event.getRoll() + DiveClient.cameraRoll(partial));
+            float extraRoll = DiveClient.cameraRoll(partial);
+            event.setRoll(event.getRoll() + extraRoll);
+            // Diagnostic only: reports the camera roll and the stance state while either is non-neutral, so
+            // a "head stays tilted after standing up" report can be traced to a source instead of guessed at.
+            long rollNow = System.currentTimeMillis();
+            int rollPhase = ProneClient.phase(Minecraft.getInstance().player);
+            if ((Math.abs(extraRoll) > 0.4F || rollPhase != ProneClient.STANDING) && rollNow - rollReportedAt > 500L) {
+                rollReportedAt = rollNow;
+                cn.bfm.BattlefieldMovement.LOG.info("[BFM] camera roll={} extra={} pronePhase={} proneAmount={} progress={}",
+                        String.format("%.2f", event.getRoll()), String.format("%.2f", extraRoll), rollPhase,
+                        String.format("%.3f", ProneClient.amount(Minecraft.getInstance().player, partial)),
+                        String.format("%.3f", ProneClient.progress(Minecraft.getInstance().player, partial)));
+            }
         }
     }
 
     @SubscribeEvent
     public static void fov(ViewportEvent.ComputeFov event) {
         if (event.getCamera().getEntity() instanceof LocalPlayer) {
-            float partial = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
+            float partial = Minecraft.getInstance().getFrameTime();
             event.setFOV(event.getFOV() + DiveClient.fovBoost(partial));
         }
     }
@@ -206,7 +222,7 @@ public final class ClientEvents {
     private static void requestProne(boolean down) {
         var player=Minecraft.getInstance().player;
         if(player!=null){desiredDown=down;lastRequest=player.level().getGameTime();}
-        PacketDistributor.sendToServer(new ProneRequestPayload(down, false));
+        cn.bfm.BfmNetwork.sendToServer(new ProneRequestPayload(down, false));
     }
 
     private ClientEvents() {

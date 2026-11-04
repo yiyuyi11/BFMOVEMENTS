@@ -1,7 +1,7 @@
 package cn.bfm.client;
 
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.neoforged.fml.ModList;
+import net.minecraftforge.fml.ModList;
 
 /**
  * Optional TaCZ PlayerAnimator control. TaCZ's lower-body layer keeps playing a

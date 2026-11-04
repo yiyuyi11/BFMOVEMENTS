@@ -18,7 +18,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(Player.class)
 public abstract class ForcedPoseMixin {
-    @Inject(method = "setForcedPose", at = @At("HEAD"), cancellable = true, require = 1)
+    // Forge adds this method; it has no vanilla obfuscation mapping.
+    @Inject(method = "setForcedPose", at = @At("HEAD"), cancellable = true, require = 1, remap = false)
     private void battlefieldMovement$protectPronePose(Pose pose, CallbackInfo ci) {
         if (pose == null && ProneState.isProne((Player) (Object) this)) {
             ci.cancel();

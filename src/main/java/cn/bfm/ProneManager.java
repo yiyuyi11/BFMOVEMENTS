@@ -2,13 +2,12 @@ package cn.bfm;
 
 import cn.bfm.network.ProneSyncPayload;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.Map;
 import java.util.UUID;
@@ -29,8 +28,8 @@ public final class ProneManager {
     public static final int PRONE = 2;
     public static final int EXITING = 3;
 
-    private static final ResourceLocation SPEED_ID =
-            ResourceLocation.fromNamespaceAndPath(BattlefieldMovement.MODID, "prone_speed");
+    private static final UUID SPEED_ID = UUID.nameUUIDFromBytes(
+            (BattlefieldMovement.MODID + ":prone_speed").getBytes(java.nio.charset.StandardCharsets.UTF_8));
     private static final Map<UUID, Entry> ACTIVE = new ConcurrentHashMap<>();
 
     private record Entry(int phase, long since, int duration, float fromEye) {
@@ -199,14 +198,13 @@ public final class ProneManager {
         if (speed == null) {
             return;
         }
-        if (prone) {
-            double penalty = Math.max(0.0, Math.min(0.8, BfmConfig.PRONE_SPEED_PENALTY.get()));
-            if (penalty > 0.0) {
-                speed.addOrUpdateTransientModifier(
-                        new AttributeModifier(SPEED_ID, -penalty, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
-            }
-        } else {
-            speed.removeModifier(SPEED_ID);
+        double penalty = prone ? Math.max(0.0, Math.min(0.8, BfmConfig.PRONE_SPEED_PENALTY.get())) : 0.0;
+        var modifier = speed.getModifier(SPEED_ID);
+        if (modifier != null && penalty > 0.0 && modifier.getAmount() == -penalty) return;
+        if (modifier != null) speed.removeModifier(SPEED_ID);
+        if (penalty > 0.0) {
+            speed.addTransientModifier(new AttributeModifier(
+                    SPEED_ID, "prone_speed", -penalty, AttributeModifier.Operation.MULTIPLY_TOTAL));
         }
     }
 
@@ -231,7 +229,7 @@ public final class ProneManager {
         ProneSyncPayload payload = entry == null
                 ? new ProneSyncPayload(player.getId(), STANDING, 0,StanceTransition.STAND_EYE, now(player))
                 : payload(player, entry);
-        PacketDistributor.sendToPlayersTrackingEntityAndSelf(player, payload);
+        cn.bfm.BfmNetwork.sendToPlayersTrackingEntityAndSelf(player, payload);
     }
 
     private static ProneSyncPayload payload(ServerPlayer player, Entry entry) {
@@ -239,7 +237,7 @@ public final class ProneManager {
     }
 
     private static void send(ServerPlayer viewer, ProneSyncPayload payload) {
-        PacketDistributor.sendToPlayer(viewer, payload);
+        cn.bfm.BfmNetwork.sendToPlayer(viewer, payload);
     }
 
     private static long now(ServerPlayer player) {

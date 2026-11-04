@@ -1,6 +1,6 @@
 package cn.bfm.mixin;
 
-import net.neoforged.neoforge.client.event.InputEvent;
+import net.minecraftforge.client.event.InputEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;

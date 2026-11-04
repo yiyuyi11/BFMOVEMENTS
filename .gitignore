@@ -7,3 +7,9 @@ logs/
 *.jar
 __pycache__/
 .idea/
+
+.gradle/
+build/
+libs/
+run/
+logs/

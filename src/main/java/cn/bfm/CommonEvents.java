@@ -1,9 +1,9 @@
 package cn.bfm;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 
 /** Server-side lifecycle for prone and slide bookkeeping. */
 public final class CommonEvents {
@@ -12,8 +12,9 @@ public final class CommonEvents {
         if (event.getEntity() instanceof ServerPlayer player) BfmNetwork.sendEyeSettings(player);
     }
     @SubscribeEvent
-    public void tick(PlayerTickEvent.Post event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
+    public void tick(PlayerTickEvent event) {
+        if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
+        if (event.player instanceof ServerPlayer player) {
             ProneManager.tick(player);
         }
     }

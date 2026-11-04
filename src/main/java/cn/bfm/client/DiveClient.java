@@ -10,7 +10,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -82,7 +82,7 @@ public final class DiveClient {
         ticks = 0;
         player.setSprinting(false);
         player.setDeltaMovement(dirX * speed, BfmConfig.DIVE_UP.get(), dirZ * speed);
-        player.hasImpulse = true;        PacketDistributor.sendToServer(new DivePayload(true, 18));
+        player.hasImpulse = true;        cn.bfm.BfmNetwork.sendToServer(new DivePayload(true, 18));
         AnimController.onDive(player.getId(), true);
         if (BfmConfig.SLIDE_PARTICLES.get()) {
             player.playSound(SoundEvents.PLAYER_ATTACK_SWEEP, 0.5F, 0.45F);
@@ -99,12 +99,12 @@ public final class DiveClient {
             if (ProneClient.confirmedProne()) {
                 proneRequestTicks = 0;
                 if(standAfterLanding){
-                    PacketDistributor.sendToServer(new ProneRequestPayload(false,false));
+                    cn.bfm.BfmNetwork.sendToServer(new ProneRequestPayload(false,false));
                     standAfterLanding=false;
                 }
             } else {
                 if (proneRequestTicks % 2 == 0) {
-                    PacketDistributor.sendToServer(new ProneRequestPayload(true, true));
+                    cn.bfm.BfmNetwork.sendToServer(new ProneRequestPayload(true, true));
                 }
                 proneRequestTicks--;
             }
@@ -188,11 +188,11 @@ public final class DiveClient {
         active = false;
         ticks = 0;
         cooldown = BfmConfig.DIVE_COOLDOWN_TICKS.get();
-        PacketDistributor.sendToServer(new DivePayload(false, 0));
+        cn.bfm.BfmNetwork.sendToServer(new DivePayload(false, 0));
         AnimController.onDive(player.getId(), false);
         // Predict prone locally so the landing never shows a one-frame stand-up.
         ProneClient.predictProne();
-        PacketDistributor.sendToServer(new ProneRequestPayload(true, true));
+        cn.bfm.BfmNetwork.sendToServer(new ProneRequestPayload(true, true));
         // The server may still see us as airborne for a tick; retry briefly.
         proneRequestTicks = 8;
     }
@@ -203,7 +203,7 @@ public final class DiveClient {
         cooldown = BfmConfig.DIVE_COOLDOWN_TICKS.get();
         proneRequestTicks = 0;
         standAfterLanding=false;
-        PacketDistributor.sendToServer(new DivePayload(false, 0));
+        cn.bfm.BfmNetwork.sendToServer(new DivePayload(false, 0));
         AnimController.onDive(player.getId(), false);
     }
 

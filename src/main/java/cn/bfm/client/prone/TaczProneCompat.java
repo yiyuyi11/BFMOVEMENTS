@@ -2,8 +2,8 @@ package cn.bfm.client.prone;
 
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.common.NeoForge;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.common.MinecraftForge;
 
 import java.util.Map;
 import java.util.UUID;
@@ -20,7 +20,7 @@ public final class TaczProneCompat {
     static {
         if (AVAILABLE) {
             try {
-                NeoForge.EVENT_BUS.register(new Impl());
+                MinecraftForge.EVENT_BUS.register(new Impl());
             } catch (Throwable ignored) {
                 // TaCZ absent or its event changed; reload detection still works.
             }
@@ -57,7 +57,7 @@ public final class TaczProneCompat {
     }
 
     private static final class Impl {
-        @net.neoforged.bus.api.SubscribeEvent
+        @net.minecraftforge.eventbus.api.SubscribeEvent
         public void onShoot(com.tacz.guns.api.event.common.GunShootEvent event) {
             if (event.getShooter() instanceof AbstractClientPlayer player) {
                 LAST_SHOT.put(player.getUUID(), player.level().getGameTime());

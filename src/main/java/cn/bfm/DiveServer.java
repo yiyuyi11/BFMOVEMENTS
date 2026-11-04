@@ -3,7 +3,7 @@ package cn.bfm;
 import cn.bfm.network.DivePayload;
 import cn.bfm.network.DiveSyncPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.Map;
 import java.util.UUID;
@@ -29,7 +29,7 @@ public final class DiveServer {
             LAST_BROADCAST.remove(player.getUUID());
             ACTIVE_UNTIL.remove(player.getUUID());
         }
-        PacketDistributor.sendToPlayersTrackingEntity(player,
+        cn.bfm.BfmNetwork.sendToPlayersTrackingEntity(player,
                 new DiveSyncPayload(player.getId(), payload.active(), duration));
     }
 

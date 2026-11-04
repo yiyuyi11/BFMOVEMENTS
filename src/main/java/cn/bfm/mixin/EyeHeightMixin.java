@@ -16,14 +16,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(Entity.class)
 public abstract class EyeHeightMixin {
-    @Inject(method = "getEyeHeight", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "getEyeHeight()F", at = @At("RETURN"), cancellable = true)
     private void battlefieldMovement$eyeHeight(CallbackInfoReturnable<Float> ci) {
         if ((Object) this instanceof Player player && ActionEyeHeight.overrides(player)) {
             ci.setReturnValue(Math.max(0.08F, ActionEyeHeight.target(player)));
         }
     }
 
-    @Inject(method = "getEyeY", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "getEyeY()D", at = @At("RETURN"), cancellable = true)
     private void battlefieldMovement$eyeY(CallbackInfoReturnable<Double> ci) {
         if ((Object) this instanceof Player player && ActionEyeHeight.overrides(player)) {
             ci.setReturnValue(player.getY() + Math.max(0.08F, ActionEyeHeight.target(player)));

@@ -1,13 +1,13 @@
 package cn.bfm;
 
 import com.mojang.logging.LogUtils;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.common.NeoForge;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModContainer;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.loading.FMLEnvironment;
+import net.minecraftforge.common.MinecraftForge;
 import org.slf4j.Logger;
 
 /**
@@ -24,18 +24,20 @@ public final class BattlefieldMovement {
     public static final String MODID = "battlefield_movement";
     public static final Logger LOG = LogUtils.getLogger();
 
-    public BattlefieldMovement(IEventBus modBus, ModContainer container) {
+    public BattlefieldMovement() {
+        IEventBus modBus=net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus();
+        var container=net.minecraftforge.fml.ModLoadingContext.get();
         container.registerConfig(ModConfig.Type.COMMON, BfmConfig.SPEC, "battlefield-movement-common.toml");
-        modBus.addListener(BfmNetwork::register);
+        BfmNetwork.register();
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modBus.addListener(BfmKeys::register);
-            modBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent event) ->
+            modBus.addListener((net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent event) ->
                     event.enqueueWork(() -> {
                         cn.bfm.client.TaczAnimationCompat.warmUp();
                         cn.bfm.client.prone.PronePoseData.available();
                     }));
         }
-        NeoForge.EVENT_BUS.register(new CommonEvents());
+        MinecraftForge.EVENT_BUS.register(new CommonEvents());
         if (FMLEnvironment.dist == Dist.CLIENT) {
             cn.bfm.client.ClientEvents.init();
             LOG.info("Battlefield Movement client ready: slide + prone share the stance key");

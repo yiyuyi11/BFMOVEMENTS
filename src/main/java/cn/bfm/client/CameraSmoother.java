@@ -24,7 +24,7 @@ public final class CameraSmoother {
         float action = ActionEyeHeight.target(player);
         float target = action >= 0.0F
                 ? action
-                : player.getDimensions(player.getPose()).eyeHeight();
+                : player.getEyeHeight(player.getPose());
         current = Math.max(0.08F, target);
     }
 

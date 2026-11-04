@@ -32,10 +32,10 @@ public abstract class PlayerRendererMixin {
         DivePoseRenderer.end(player);
     }
 
-    @Inject(method = "setupRotations(Lnet/minecraft/client/player/AbstractClientPlayer;Lcom/mojang/blaze3d/vertex/PoseStack;FFFF)V",
+    @Inject(method = "setupRotations(Lnet/minecraft/client/player/AbstractClientPlayer;Lcom/mojang/blaze3d/vertex/PoseStack;FFF)V",
             at = @At("HEAD"), cancellable = true)
     private void battlefieldMovement$rootProne(AbstractClientPlayer player, PoseStack stack, float age,
-                                               float bodyYaw, float partial, float scale, CallbackInfo ci) {
+                                               float bodyYaw, float partial, CallbackInfo ci) {
         if (PronePoseRenderer.applyRoot(player, stack) || DivePoseRenderer.applyRoot(player, stack)) {
             ci.cancel();
         }
