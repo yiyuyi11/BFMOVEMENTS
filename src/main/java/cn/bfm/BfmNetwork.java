@@ -7,6 +7,8 @@ import cn.bfm.network.ProneSyncPayload;
 import cn.bfm.network.SlidePayload;
 import cn.bfm.network.SlideSyncPayload;
 import cn.bfm.network.MovementSettingsPayload;
+import cn.bfm.network.MasterStatePayload;
+import cn.bfm.network.MasterTogglePayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -29,6 +31,33 @@ public final class BfmNetwork {
         registrar.playToClient(ProneSyncPayload.TYPE, ProneSyncPayload.CODEC, BfmNetwork::onProneSync);
         registrar.playToClient(SlideSyncPayload.TYPE, SlideSyncPayload.CODEC, BfmNetwork::onSlideSync);
         registrar.playToClient(DiveSyncPayload.TYPE, DiveSyncPayload.CODEC, BfmNetwork::onDiveSync);
+        registrar.playToClient(MasterStatePayload.TYPE, MasterStatePayload.CODEC, (payload, context) ->
+                context.enqueueWork(() -> {
+                    if (FMLEnvironment.dist == Dist.CLIENT) BattlefieldMovement.acceptRemote(payload.enabled());
+                }));
+        registrar.playToServer(MasterTogglePayload.TYPE, MasterTogglePayload.CODEC, (payload, context) ->
+                context.enqueueWork(() -> {
+                    if (!(context.player() instanceof ServerPlayer player)) return;
+                    if (!player.hasPermissions(2)) {
+                        BattlefieldMovement.LOG.info("{} tried to toggle the movement mod without permission",
+                                player.getScoreboardName());
+                        MasterSwitch.sendTo(player);
+                        return;
+                    }
+                    if (BattlefieldMovement.enabled() != payload.enabled()) {
+                        BattlefieldMovement.toggleConfig();
+                    }
+                    MasterSwitch.broadcast();
+                }));
+    }
+
+    /** Thin wrappers so the switch code reads the same in both loader versions. */
+    public static void sendToServer(net.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
+    }
+
+    public static void sendToPlayer(ServerPlayer player, net.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, payload);
     }
 
     private static void onProneRequest(ProneRequestPayload payload, IPayloadContext context) {

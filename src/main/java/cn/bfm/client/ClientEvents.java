@@ -48,10 +48,12 @@ public final class ClientEvents {
             return;
         }
         if (BfmKeys.TOGGLE.consumeClick()) {
-            boolean on = cn.bfm.BattlefieldMovement.toggleLocal();
+            // Ask the server rather than flipping a private flag: on a server the authoritative state is the only
+            // one that changes behaviour, and a local-only switch is what made the mod look impossible to turn on.
+            cn.bfm.BfmNetwork.sendToServer(new cn.bfm.network.MasterTogglePayload(!cn.bfm.BattlefieldMovement.enabled()));
             if (client.player != null) {
                 client.player.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                        "Battlefield Movement " + (on ? "on" : "off")), true);
+                        "Battlefield Movement: requested " + (!cn.bfm.BattlefieldMovement.enabled() ? "on" : "off")), true);
             }
         }
         if (!cn.bfm.BattlefieldMovement.enabled()) {

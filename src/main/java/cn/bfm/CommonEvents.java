@@ -10,7 +10,10 @@ public final class CommonEvents {
     @SubscribeEvent
     public void login(PlayerEvent.PlayerLoggedInEvent event) {
         if (!BattlefieldMovement.enabled()) return;
-        if (event.getEntity() instanceof ServerPlayer player) BfmNetwork.sendEyeSettings(player);
+        if (event.getEntity() instanceof ServerPlayer player) {
+            BfmNetwork.sendEyeSettings(player);
+            MasterSwitch.sendTo(player);
+        }
     }
     @SubscribeEvent
     public void tick(PlayerTickEvent.Post event) {
