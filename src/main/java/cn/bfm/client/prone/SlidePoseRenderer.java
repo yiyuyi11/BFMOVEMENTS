@@ -20,15 +20,16 @@ public final class SlidePoseRenderer {
 
         // ModelPart rotates the torso at its top, but the slide rotates it
         // about the waist. Move the independent model pivots as a single rig.
+        boolean crouch = cn.bfm.client.ServerEyeSettings.tuning().crouchSlide();
         ModelPart torso = model.body;
         Quaternionf standing = new Quaternionf().rotationZYX(torso.zRot, torso.yRot, torso.xRot);
         Vector3f waistOffset = standing.transform(new Vector3f(0, 12, 0));
         Vector3f waist = new Vector3f(torso.x, torso.y, torso.z).add(waistOffset);
-        Vector3f hips = new Vector3f(waist).add(0, 9.5f * amount, 0);
+        Vector3f hips = new Vector3f(waist).add(0, (crouch ? 7.5f : 9.5f) * amount, 0);
 
-        torso.xRot = Mth.lerp(amount, torso.xRot, -63 * Mth.DEG_TO_RAD);
+        torso.xRot = Mth.lerp(amount, torso.xRot, (crouch ? 22 : -63) * Mth.DEG_TO_RAD);
         torso.yRot = Mth.lerp(amount, torso.yRot, -6 * Mth.DEG_TO_RAD);
-        torso.zRot = Mth.lerp(amount, torso.zRot, 14 * Mth.DEG_TO_RAD);
+        torso.zRot = Mth.lerp(amount, torso.zRot, (crouch ? 4 : 14) * Mth.DEG_TO_RAD);
         Quaternionf reclined = new Quaternionf().rotationZYX(torso.zRot, torso.yRot, torso.xRot);
         Quaternionf change = new Quaternionf(reclined).mul(standing.conjugate());
         moveJoint(torso, waist, hips, change);
@@ -37,11 +38,11 @@ public final class SlidePoseRenderer {
         moveJoint(model.rightArm, waist, hips, change);
         moveJoint(model.leftLeg, waist, hips, change);
         moveJoint(model.rightLeg, waist, hips, change);
-        model.head.xRot += 16 * Mth.DEG_TO_RAD * amount;
-        steadyArms(player, model, amount);
+        model.head.xRot += (crouch ? -8 : 16) * Mth.DEG_TO_RAD * amount;
+        steadyArms(player, model, amount, !crouch);
 
-        model.rightLeg.xRot = Mth.lerp(amount, model.rightLeg.xRot, -89 * Mth.DEG_TO_RAD);
-        model.leftLeg.xRot = Mth.lerp(amount, model.leftLeg.xRot, -92 * Mth.DEG_TO_RAD);
+        model.rightLeg.xRot = Mth.lerp(amount, model.rightLeg.xRot, (crouch ? -64 : -89) * Mth.DEG_TO_RAD);
+        model.leftLeg.xRot = Mth.lerp(amount, model.leftLeg.xRot, (crouch ? -81 : -92) * Mth.DEG_TO_RAD);
         model.rightLeg.yRot = Mth.lerp(amount, model.rightLeg.yRot, 1 * Mth.DEG_TO_RAD);
         model.leftLeg.yRot = Mth.lerp(amount, model.leftLeg.yRot, 15 * Mth.DEG_TO_RAD);
         model.rightLeg.zRot = 2 * Mth.DEG_TO_RAD * amount;
@@ -55,7 +56,7 @@ public final class SlidePoseRenderer {
         model.rightPants.copyFrom(model.rightLeg);
     }
 
-    private static void steadyArms(AbstractClientPlayer player, PlayerModel<?> model, float amount) {
+    private static void steadyArms(AbstractClientPlayer player, PlayerModel<?> model, float amount, boolean braceGround) {
         var main = player.getMainHandItem();
         var off = player.getOffhandItem();
         // A firearm can use both hands, even when the offhand slot is empty.
@@ -63,7 +64,7 @@ public final class SlidePoseRenderer {
 
         HumanoidArm primary = player.getMainArm();
         HumanoidArm support = off.isEmpty() ? primary.getOpposite() : main.isEmpty() ? primary : null;
-        if (support == null) return;
+        if (support == null || !braceGround) return;
 
         ModelPart brace = support == HumanoidArm.LEFT ? model.leftArm : model.rightArm;
         float roll = (support == HumanoidArm.LEFT ? -.38f : .38f);

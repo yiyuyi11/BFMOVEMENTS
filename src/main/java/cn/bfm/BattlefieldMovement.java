@@ -93,6 +93,7 @@ public final class BattlefieldMovement {
                                     "Battlefield Movement: " + (on ? "on" : "off") + " (" + source() + ")"), false);
                             return 1;
                         })
+                        .then(SlideSettingsCommand.build())
                         .then(com.mojang.brigadier.builder.LiteralArgumentBuilder
                                 .<net.minecraft.commands.CommandSourceStack>literal("toggle")
                                 .requires(source -> source.hasPermission(2))

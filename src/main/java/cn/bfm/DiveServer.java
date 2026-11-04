@@ -3,7 +3,6 @@ package cn.bfm;
 import cn.bfm.network.DivePayload;
 import cn.bfm.network.DiveSyncPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.PacketDistributor;
 
 import java.util.Map;
 import java.util.UUID;
@@ -20,6 +19,10 @@ public final class DiveServer {
         long now = System.currentTimeMillis();
         long last = LAST_BROADCAST.getOrDefault(player.getUUID(), 0L);
         if (payload.active()) {
+            if (!BattlefieldMovement.enabled() || !BfmConfig.DIVE_ENABLED.get() || !player.isAlive()
+                    || player.isSpectator() || player.isPassenger() || player.isInWater() || player.isFallFlying()
+                    || ProneState.isProne(player) || SlideServer.isSliding(player)) return;
+            duration = Math.min(duration,31);
             ACTIVE_UNTIL.put(player.getUUID(), player.level().getGameTime() + duration);
             if (now - last < MIN_INTERVAL_MS) {
                 return;

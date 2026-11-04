@@ -7,8 +7,6 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -39,16 +37,7 @@ public abstract class CameraMixin {
         // The prone model lays the head ahead of the entity pivot. Follow the
         // body's heading so free look doesn't orbit the view around the player.
         float yaw = Mth.rotLerp(partial, player.yBodyRotO, player.yBodyRot);
-        Vec3 start = getPosition();
-        Vec3 direction = cn.bfm.ProneGeometry.forward(yaw);
-        double distance = cn.bfm.ProneGeometry.HEAD_FORWARD * amount;
-        if (distance < .001) return;
-        Vec3 end = start.add(direction.scale(distance));
-        var hit = level.clip(new ClipContext(start, end, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, player));
-        if (hit.getType() != HitResult.Type.MISS) {
-            end = start.add(direction.scale(Math.max(0, start.distanceTo(hit.getLocation()) - .08)));
-        }
-        setPosition(end);
+        setPosition(cn.bfm.ProneGeometry.headPosition(player,getPosition(),yaw,amount));
     }
 
     @Inject(method = "setup", at = @At("HEAD"))

@@ -11,6 +11,8 @@ public final class BfmConfig {
     public static final ForgeConfigSpec.BooleanValue SLIDE_ENABLED;
     public static final ForgeConfigSpec.BooleanValue SLIDE_ON_SNEAK;
     public static final ForgeConfigSpec.DoubleValue SLIDE_SPEED;
+    public static final ForgeConfigSpec.DoubleValue SLIDE_DISTANCE;
+    public static final ForgeConfigSpec.BooleanValue SLIDE_CROUCH_STYLE;
     public static final ForgeConfigSpec.DoubleValue SLIDE_FRICTION;
     public static final ForgeConfigSpec.IntValue SLIDE_MAX_TICKS;
     public static final ForgeConfigSpec.IntValue SLIDE_COOLDOWN_TICKS;
@@ -20,6 +22,7 @@ public final class BfmConfig {
 
     public static final ForgeConfigSpec.BooleanValue DIVE_ENABLED;
     public static final ForgeConfigSpec.DoubleValue DIVE_SPEED;
+    public static final ForgeConfigSpec.DoubleValue DIVE_DISTANCE;
     public static final ForgeConfigSpec.DoubleValue DIVE_UP;
     public static final ForgeConfigSpec.IntValue DIVE_COOLDOWN_TICKS;
     public static final ForgeConfigSpec.DoubleValue DIVE_CAMERA_DROP;
@@ -39,6 +42,9 @@ public final class BfmConfig {
                 .define("sprint_sneak_starts_slide", true);
         SLIDE_SPEED = b.comment("Initial slide speed in blocks per tick (0.46 ~ 9 m/s).")
                 .defineInRange("speed", 0.46D, 0.20D, 0.80D);
+        SLIDE_DISTANCE = b.comment("Maximum horizontal travel in blocks.").defineInRange("distance", 4.0D, .5D, 16D);
+        SLIDE_CROUCH_STYLE = b.comment("Use the Battlefield 1-style crouched slide instead of the reclined slide.")
+                .define("crouch_style", true);
         SLIDE_FRICTION = b.comment("Per-tick decay. 0.92 keeps about 4 blocks, 0.85 is a long parkour slide.")
                 .defineInRange("friction", 0.92D, 0.70D, 1.0D);
         SLIDE_MAX_TICKS = b.comment("Hard cap on slide length in ticks.").defineInRange("max_ticks", 16, 6, 60);
@@ -54,6 +60,7 @@ public final class BfmConfig {
         DIVE_ENABLED = b.comment("Enable the combat dive (sprint + prone key).").define("enabled", true);
         DIVE_SPEED = b.comment("Forward launch speed of a dive in blocks per tick.")
                 .defineInRange("speed", 0.38D, 0.20D, 0.70D);
+        DIVE_DISTANCE = b.comment("Maximum horizontal travel in blocks.").defineInRange("distance", 4.5D, .5D, 16D);
         DIVE_UP = b.comment("Upward launch of a dive.").defineInRange("up", 0.42D, 0.20D, 0.60D);
         DIVE_COOLDOWN_TICKS = b.comment("Cooldown after a dive lands.").defineInRange("cooldown_ticks", 24, 0, 200);
         DIVE_CAMERA_DROP = b.comment("First-person camera drop while diving, in blocks.")

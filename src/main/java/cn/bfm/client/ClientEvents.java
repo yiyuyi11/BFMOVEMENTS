@@ -205,7 +205,7 @@ public final class ClientEvents {
         boolean sneakDown = client.options.keyShift.isDown();
         if (sneakDown && !sneakHeld) {
             sneakHeld = true;
-            if (!SlideClient.suppressSneak() && BfmConfig.SLIDE_ON_SNEAK.get()) {
+            if (!SlideClient.suppressSneak() && ServerEyeSettings.tuning().slideOnSneak()) {
                 SlideClient.start(player, true);
             }
         } else if (!sneakDown && sneakHeld) {
@@ -222,8 +222,9 @@ public final class ClientEvents {
     }
 
     private static void pressProne(LocalPlayer player) {
-        if(!BfmConfig.PRONE_ENABLED.get())return;
+        boolean proneEnabled = ServerEyeSettings.tuning().prone();
         if(SlideClient.isActive()){
+            if (!proneEnabled) return;
             float from=ServerEyeSettings.slide();
             // Send the stance request first: the server still owns the slide height at this point.
             requestProne(true);
@@ -243,11 +244,11 @@ public final class ClientEvents {
             requestProne(BfmConfig.PRONE_HOLD.get());
             return;
         }
-        if (BfmConfig.DIVE_ENABLED.get() && DiveClient.canStart(player)) {
+        if (DiveClient.canStart(player)) {
             DiveClient.start(player);
             return;
         }
-        requestProne(true);
+        if (proneEnabled) requestProne(true);
     }
 
     private static void releaseProne(LocalPlayer player) {

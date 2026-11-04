@@ -10,8 +10,8 @@ import net.minecraft.world.phys.Vec3;
 public final class ProneGeometry {
     public static final double MODEL_CENTER_SHIFT = .10;
     public static final double HEAD_FORWARD = .50 + MODEL_CENTER_SHIFT;
-    private static final double HALF_LENGTH = .94;
-    private static final double HALF_WIDTH = .33;
+    private static final double HALF_LENGTH = .72;
+    private static final double HALF_WIDTH = .29;
 
     public static Vec3 forward(float yaw) {
         double radians = Math.toRadians(yaw);
@@ -20,11 +20,22 @@ public final class ProneGeometry {
 
     public static AABB envelope(AABB base, float yaw, float amount) {
         Vec3 forward = forward(yaw);
-        double halfX = HALF_LENGTH * Math.abs(forward.x) + HALF_WIDTH * Math.abs(forward.z);
-        double halfZ = HALF_LENGTH * Math.abs(forward.z) + HALF_WIDTH * Math.abs(forward.x);
+        double halfX = Math.min(.72, HALF_LENGTH * Math.abs(forward.x) + HALF_WIDTH * Math.abs(forward.z));
+        double halfZ = Math.min(.72, HALF_LENGTH * Math.abs(forward.z) + HALF_WIDTH * Math.abs(forward.x));
         double growX = Math.max(0, halfX - base.getXsize() * .5) * amount;
         double growZ = Math.max(0, halfZ - base.getZsize() * .5) * amount;
         return base.inflate(growX, 0, growZ);
+    }
+
+    public static Vec3 headPosition(Player player, Vec3 origin, float yaw, float amount) {
+        double distance = HEAD_FORWARD * net.minecraft.util.Mth.clamp(amount,0f,1f);
+        if (distance < .001) return origin;
+        Vec3 direction = forward(yaw);
+        Vec3 target = origin.add(direction.scale(distance));
+        var hit = player.level().clip(new net.minecraft.world.level.ClipContext(origin,target,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,player));
+        return hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS ? target
+                : origin.add(direction.scale(Math.max(0,origin.distanceTo(hit.getLocation())-.08)));
     }
 
     private static boolean active(Player player) {

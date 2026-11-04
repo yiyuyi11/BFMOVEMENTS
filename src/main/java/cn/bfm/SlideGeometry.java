@@ -7,6 +7,17 @@ import net.minecraft.world.phys.AABB;
 /** Sliding shortens the actual collision box on both sides of the connection. */
 public final class SlideGeometry {
     public static final double HEIGHT = 1.18;
+    private static final double CROUCH_HEIGHT = 1.38;
+
+    private static double height(Player player) {
+        boolean crouch = player.level().isClientSide()
+                ? cn.bfm.client.ServerEyeSettings.tuning().crouchSlide() : BfmConfig.SLIDE_CROUCH_STYLE.get();
+        return crouch ? CROUCH_HEIGHT : HEIGHT;
+    }
+
+    private static boolean low(AABB box) {
+        return Math.abs(box.getYsize()-HEIGHT) < .001 || Math.abs(box.getYsize()-CROUCH_HEIGHT) < .001;
+    }
 
     private static boolean active(Player player) {
         if (!BattlefieldMovement.enabled()) return false;
@@ -20,29 +31,29 @@ public final class SlideGeometry {
     public static AABB selectBox(Player player, AABB base) {
         if (!active(player)) {
             AABB current = player.getBoundingBox();
-            if (current == null || Math.abs(current.getYsize() - HEIGHT) > .001
-                    || base.getYsize() <= HEIGHT || ProneGeometry.fits(player, base)) return base;
+            if (current == null || !low(current)
+                    || base.getYsize() <= current.getYsize() || ProneGeometry.fits(player, base)) return base;
             // Vanilla chooses crouch or crawl on its next pose update. Until
             // then retain the low clearance instead of standing into blocks.
-            return shorten(base);
+            return shorten(base,current.getYsize());
         }
 
-        AABB low = shorten(base);
+        AABB low = shorten(base,height(player));
         var direction = ProneGeometry.forward(player.yBodyRot);
-        AABB extended = low.inflate(.39 * Math.abs(direction.x), 0, .39 * Math.abs(direction.z));
+        AABB extended = low.inflate(.22 * Math.abs(direction.x), 0, .22 * Math.abs(direction.z));
         return ProneGeometry.fits(player, extended) ? extended : low;
     }
 
     public static void refresh(Player player) {
-        if (!active(player) && Math.abs(player.getBoundingBox().getYsize() - HEIGHT) > .001) return;
+        if (!active(player) && !low(player.getBoundingBox())) return;
         AABB base = player.getDimensions(player.getPose()).makeBoundingBox(player.position());
         AABB target = selectBox(player, base);
         if (!target.equals(player.getBoundingBox())) player.setBoundingBox(target);
     }
 
-    private static AABB shorten(AABB base) {
+    private static AABB shorten(AABB base,double height) {
         return new AABB(base.minX, base.minY, base.minZ, base.maxX,
-                Math.min(base.maxY, base.minY + HEIGHT), base.maxZ);
+                Math.min(base.maxY, base.minY + height), base.maxZ);
     }
 
     private SlideGeometry() {}

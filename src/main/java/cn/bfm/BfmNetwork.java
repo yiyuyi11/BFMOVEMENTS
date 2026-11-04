@@ -9,7 +9,7 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.api.distmarker.Dist;
 
 public final class BfmNetwork {
- private static final String VERSION="forge1201-3";
+ private static final String VERSION="forge1201-5";
  private static final SimpleChannel CHANNEL=NetworkRegistry.newSimpleChannel(new ResourceLocation("battlefield_movement","main"),()->VERSION,VERSION::equals,VERSION::equals);
  public static void register(){
   CHANNEL.messageBuilder(ProneRequestPayload.class,0,NetworkDirection.PLAY_TO_SERVER).encoder(ProneRequestPayload::encode).decoder(ProneRequestPayload::decode).consumerMainThread((p,ctx)->{
@@ -40,13 +40,13 @@ public final class BfmNetwork {
    }ctx.get().setPacketHandled(true);
   }).add();
   CHANNEL.messageBuilder(MovementSettingsPayload.class,6,NetworkDirection.PLAY_TO_CLIENT).encoder(MovementSettingsPayload::encode).decoder(MovementSettingsPayload::decode).consumerMainThread((p,ctx)->{
-   if(FMLEnvironment.dist==Dist.CLIENT)cn.bfm.client.ServerEyeSettings.accept(p.slideEyeHeight(),p.diveEyeHeight());ctx.get().setPacketHandled(true);
+   if(FMLEnvironment.dist==Dist.CLIENT)cn.bfm.client.ServerEyeSettings.accept(p.slideEyeHeight(),p.diveEyeHeight(),p.tuning());ctx.get().setPacketHandled(true);
   }).add();
  }
  public static void sendToServer(Object packet){CHANNEL.sendToServer(packet);}
  public static void sendToPlayer(ServerPlayer player,Object packet){CHANNEL.send(PacketDistributor.PLAYER.with(()->player),packet);}
  public static void sendToPlayersTrackingEntity(Entity entity,Object packet){CHANNEL.send(PacketDistributor.TRACKING_ENTITY.with(()->entity),packet);}
  public static void sendToPlayersTrackingEntityAndSelf(Entity entity,Object packet){CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(()->entity),packet);}
- public static void sendEyeSettings(ServerPlayer player){sendToPlayer(player,new MovementSettingsPayload(ActionEyeHeight.slideHeight(),ActionEyeHeight.diveHeight()));}
+ public static void sendEyeSettings(ServerPlayer player){sendToPlayer(player,new MovementSettingsPayload(ActionEyeHeight.slideHeight(),ActionEyeHeight.diveHeight(),MovementTuning.config()));}
  private BfmNetwork(){}
 }

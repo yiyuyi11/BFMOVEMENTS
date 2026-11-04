@@ -10,7 +10,6 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.PacketDistributor;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -27,7 +26,7 @@ public final class DiveClient {
     private static int cooldown;
     private static int proneRequestTicks;
     private static boolean standAfterLanding;
-    private static double speed;
+    private static double speed, travelled, lastX, lastZ;
     private static double dirX;
     private static double dirZ;
     private static float camera;
@@ -56,7 +55,7 @@ public final class DiveClient {
 
     public static boolean canStart(LocalPlayer player) {
         double horizontal = Math.hypot(player.getDeltaMovement().x, player.getDeltaMovement().z);
-        if (!BfmConfig.DIVE_ENABLED.get() || active || cooldown > 0
+        if (!ServerEyeSettings.tuning().dive() || active || cooldown > 0
                 || ProneClient.isLocalProne() || SlideClient.isActive()) {
             return false;
         }
@@ -76,13 +75,17 @@ public final class DiveClient {
         double[] direction = inputDirection(player);
         dirX = direction[0];
         dirZ = direction[1];
-        speed = BfmConfig.DIVE_SPEED.get();
+        var tuning = ServerEyeSettings.tuning();
+        speed = Math.min(tuning.diveSpeed(),tuning.diveDistance());
+        travelled = 0;
+        lastX = player.getX();
+        lastZ = player.getZ();
         active = true;
         standAfterLanding=false;
         ticks = 0;
         player.setSprinting(false);
-        player.setDeltaMovement(dirX * speed, BfmConfig.DIVE_UP.get(), dirZ * speed);
-        player.hasImpulse = true;        cn.bfm.BfmNetwork.sendToServer(new DivePayload(true, 18));
+        player.setDeltaMovement(dirX * speed, tuning.diveUp(), dirZ * speed);
+        player.hasImpulse = true;        cn.bfm.BfmNetwork.sendToServer(new DivePayload(true, 31));
         AnimController.onDive(player.getId(), true);
         if (BfmConfig.SLIDE_PARTICLES.get()) {
             player.playSound(SoundEvents.PLAYER_ATTACK_SWEEP, 0.5F, 0.45F);
@@ -127,7 +130,7 @@ public final class DiveClient {
         if (active && player != null) {
             ticks++;
             boolean landed = ticks > 4 && player.onGround();
-            boolean invalid = player.isInWater() || player.isPassenger() || player.isFallFlying();
+            boolean invalid = !ServerEyeSettings.tuning().dive() || player.isInWater() || player.isPassenger() || player.isFallFlying();
             if (landed) {
                 land(player);
             } else if (invalid || ticks > 30) {
@@ -149,8 +152,15 @@ public final class DiveClient {
     }
 
     public static void applyVelocity(LocalPlayer player) {
-        // Deliberately empty: the dive is a real leap. Re-setting horizontal
-        // velocity every tick turned it into a grounded slide.
+        if (!active) return;
+        travelled += Math.hypot(player.getX()-lastX,player.getZ()-lastZ);
+        lastX = player.getX();
+        lastZ = player.getZ();
+        Vec3 velocity = player.getDeltaMovement();
+        double horizontal = velocity.horizontalDistance();
+        double remaining = Math.max(0,ServerEyeSettings.tuning().diveDistance()-travelled);
+        if (horizontal > remaining)
+            player.setDeltaMovement(velocity.x*remaining/horizontal,velocity.y,velocity.z*remaining/horizontal);
     }
 
     public static float cameraTilt(float partial) {
@@ -190,6 +200,7 @@ public final class DiveClient {
         cooldown = BfmConfig.DIVE_COOLDOWN_TICKS.get();
         cn.bfm.BfmNetwork.sendToServer(new DivePayload(false, 0));
         AnimController.onDive(player.getId(), false);
+        if (!ServerEyeSettings.tuning().prone()) return;
         // Predict prone locally so the landing never shows a one-frame stand-up.
         ProneClient.predictProne();
         cn.bfm.BfmNetwork.sendToServer(new ProneRequestPayload(true, true));
