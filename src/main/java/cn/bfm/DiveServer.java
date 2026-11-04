@@ -20,6 +20,10 @@ public final class DiveServer {
         long now = System.currentTimeMillis();
         long last = LAST_BROADCAST.getOrDefault(player.getUUID(), 0L);
         if (payload.active()) {
+            if (!BattlefieldMovement.enabled() || !BfmConfig.DIVE_ENABLED.get() || !player.isAlive()
+                    || player.isSpectator() || player.isPassenger() || player.isInWater() || player.isFallFlying()
+                    || ProneState.isProne(player) || SlideServer.isSliding(player)) return;
+            duration = Math.min(duration,31);
             ACTIVE_UNTIL.put(player.getUUID(), player.level().getGameTime() + duration);
             if (now - last < MIN_INTERVAL_MS) {
                 return;

@@ -19,11 +19,11 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 /** One registrar for all movement payloads. */
 public final class BfmNetwork {
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("3");
+        PayloadRegistrar registrar = event.registrar("5");
         registrar.playToClient(MovementSettingsPayload.TYPE, MovementSettingsPayload.CODEC, (payload, context) ->
                 context.enqueueWork(() -> {
                     if (FMLEnvironment.dist == Dist.CLIENT) cn.bfm.client.ServerEyeSettings.accept(
-                            payload.slideEyeHeight(), payload.diveEyeHeight());
+                            payload.slideEyeHeight(), payload.diveEyeHeight(), payload.tuning());
                 }));
         registrar.playToServer(ProneRequestPayload.TYPE, ProneRequestPayload.CODEC, BfmNetwork::onProneRequest);
         registrar.playToServer(SlidePayload.TYPE, SlidePayload.CODEC, BfmNetwork::onSlide);
@@ -112,7 +112,7 @@ public final class BfmNetwork {
 
     public static void sendEyeSettings(ServerPlayer player) {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
-                new MovementSettingsPayload(ActionEyeHeight.slideHeight(), ActionEyeHeight.diveHeight()));
+                new MovementSettingsPayload(ActionEyeHeight.slideHeight(), ActionEyeHeight.diveHeight(), MovementTuning.config()));
     }
 
     private BfmNetwork() {

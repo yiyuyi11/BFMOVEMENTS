@@ -30,7 +30,7 @@ public final class SlideClient {
     private static boolean suppressSneak;
     private static int ticks;
     private static int cooldown;
-    private static double speed;
+    private static double speed, travelled, lastX, lastZ;
     private static double dirX;
     private static double dirZ;
     private static float camera;
@@ -62,7 +62,7 @@ public final class SlideClient {
 
     public static boolean canStart(LocalPlayer player) {
         double horizontal = Math.hypot(player.getDeltaMovement().x, player.getDeltaMovement().z);
-        if (!BfmConfig.SLIDE_ENABLED.get() || active || cooldown > 0
+        if (!ServerEyeSettings.tuning().slide() || active || cooldown > 0
                 || ProneClient.isLocalProne() || DiveClient.isActive()) {
             return false;
         }
@@ -75,7 +75,7 @@ public final class SlideClient {
         }
         // Sprinting is the intended trigger, but sneaking cancels the sprint flag one
         // tick before this check runs. High horizontal speed is the reliable signal.
-        if (BfmConfig.SLIDE_REQUIRE_SPRINT.get() && !player.isSprinting() && horizontal < 0.12D) {
+        if (ServerEyeSettings.tuning().slideRequireSprint() && !player.isSprinting() && horizontal < 0.12D) {
             return false;
         }
         return player.isSprinting() || horizontal > 0.06D;
@@ -91,8 +91,11 @@ public final class SlideClient {
         }
         double[] direction = inputDirection(player);
         double horizontal = Math.hypot(player.getDeltaMovement().x, player.getDeltaMovement().z);
-        double base = BfmConfig.SLIDE_SPEED.get();
-        speed = Mth.clamp(base * (0.88D + horizontal * 0.55D), 0.30D, 0.64D);
+        var tuning = ServerEyeSettings.tuning();
+        speed = tuning.slideSpeed() * (0.88D + Math.min(.40D,horizontal) * .55D);
+        travelled = 0;
+        lastX = player.getX();
+        lastZ = player.getZ();
         dirX = direction[0];
         dirZ = direction[1];
         active = true;
@@ -100,9 +103,9 @@ public final class SlideClient {
         suppressSneak = viaSneak;
         player.setSprinting(false);
         PacketDistributor.sendToServer(
-                new SlidePayload(true, BfmConfig.SLIDE_MAX_TICKS.get(), (float) dirX, (float) dirZ));
+                new SlidePayload(true, ServerEyeSettings.tuning().slideTicks(), (float) dirX, (float) dirZ));
         AnimController.onSlide(player.getId(), true);
-        if (BfmConfig.SLIDE_PARTICLES.get()) {
+        if (ServerEyeSettings.tuning().slideParticles()) {
             player.playSound(SoundEvents.PLAYER_ATTACK_SWEEP, 0.45F, 0.55F);
             burst(player, 6);
         }
@@ -123,11 +126,11 @@ public final class SlideClient {
         LocalPlayer player = client.player;
         if (active && player != null) {
             ticks++;
-            boolean invalid = !player.onGround() || player.isInWater() || player.isPassenger()
-                    || player.horizontalCollision || ticks >= BfmConfig.SLIDE_MAX_TICKS.get();
+            boolean invalid = !ServerEyeSettings.tuning().slide() || !player.onGround() || player.isInWater() || player.isPassenger()
+                    || player.horizontalCollision || ticks >= ServerEyeSettings.tuning().slideTicks();
             if (invalid) {
                 stop(player, true);
-            } else if (BfmConfig.SLIDE_PARTICLES.get() && ticks % 2 == 0) {
+            } else if (ServerEyeSettings.tuning().slideParticles() && ticks % 2 == 0) {
                 burst(player, 2);
             }
         } else if (active) {
@@ -153,9 +156,15 @@ public final class SlideClient {
         // Short acceleration ramp: a hard velocity snap is the main source of the
         // "stutter" you feel on the first frame.
         double ramp = Math.min(1.0D, 0.55D + ticks * 0.18D);
-        player.setDeltaMovement(dirX * speed * ramp, player.getDeltaMovement().y, dirZ * speed * ramp);
+        travelled += Math.hypot(player.getX()-lastX,player.getZ()-lastZ);
+        lastX = player.getX();
+        lastZ = player.getZ();
+        var tuning = ServerEyeSettings.tuning();
+        double step = Math.min(speed*ramp,Math.max(0,tuning.slideDistance()-travelled));
+        player.setDeltaMovement(dirX * step, player.getDeltaMovement().y, dirZ * step);
         player.hasImpulse = true;
-        speed *= BfmConfig.SLIDE_FRICTION.get();
+        if (step <= .001) { stop(player,true); return; }
+        speed *= tuning.slideFriction();
         if (speed < MIN_SPEED) {
             stop(player, true);
         }
@@ -171,7 +180,7 @@ public final class SlideClient {
         // is still physically held now, letting it through means the player
         // settles into crouch; if it was released, the player stands up.
         suppressSneak = false;
-        cooldown = BfmConfig.SLIDE_COOLDOWN_TICKS.get();
+        cooldown = ServerEyeSettings.tuning().slideCooldown();
         AnimController.onSlide(player == null ? -1 : player.getId(), false);
         if (send && player != null) {
             PacketDistributor.sendToServer(new SlidePayload(false, 0, 0.0F, 0.0F));

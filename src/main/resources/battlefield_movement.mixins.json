@@ -5,6 +5,8 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "EyeHeightMixin",
+    "ActionEyePositionMixin",
+    "SuperbActionOriginMixin",
     "TaczBulletOriginMixin",
     "ProneBoundingBoxMixin",
     "ForcedPoseMixin",
