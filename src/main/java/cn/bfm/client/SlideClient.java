@@ -21,8 +21,7 @@ import java.util.Map;
  *
  * <p>Unlike parkour slide mods this is a single committed burst: a fixed
  * ~4-block glide that decays in under a second and then goes on cooldown.  It
- * does not shrink the hitbox, so it cannot be used to squeeze through gaps; the
- * value is the burst plus the animation.</p>
+ * uses the short collision box shared with the server.</p>
  */
 public final class SlideClient {
     private static final double MIN_SPEED = 0.12D;
@@ -44,6 +43,12 @@ public final class SlideClient {
 
     public static boolean isActive() {
         return active;
+    }
+
+    public static boolean isSliding(net.minecraft.world.entity.player.Player player) {
+        if (player == Minecraft.getInstance().player) return active;
+        Remote remote = REMOTE.get(player.getId());
+        return remote != null && player.level().getGameTime() - remote.startTick() < remote.duration();
     }
 
     /** True while the sneak key must not crouch, because it started this slide. */

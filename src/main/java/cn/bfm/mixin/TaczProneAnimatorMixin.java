@@ -32,7 +32,7 @@ public abstract class TaczProneAnimatorMixin {
     @Inject(method = "playLowerAnimation", at = @At("HEAD"), cancellable = true, require = 0)
     private static void battlefieldMovement$noLower(AbstractClientPlayer player, GunDisplayInstance display,
                                                      float limbSwingAmount, CallbackInfo ci) {
-        if (ProneClient.isProne(player)) {
+        if (ProneClient.isProne(player) || cn.bfm.client.AnimController.ownsSlide(player)) {
             ci.cancel();
         }
     }
@@ -48,7 +48,7 @@ public abstract class TaczProneAnimatorMixin {
     @Inject(method = "playRotationAnimation", at = @At("HEAD"), cancellable = true, require = 0)
     private static void battlefieldMovement$noRotation(AbstractClientPlayer player, GunDisplayInstance display,
                                                         CallbackInfo ci) {
-        if (ProneClient.isProne(player)) {
+        if (ProneClient.isProne(player) || cn.bfm.client.AnimController.ownsSlide(player)) {
             ci.cancel();
         }
     }

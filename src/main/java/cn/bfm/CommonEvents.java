@@ -17,9 +17,12 @@ public final class CommonEvents {
     }
     @SubscribeEvent
     public void tick(PlayerTickEvent.Post event) {
-        if (!BattlefieldMovement.enabled()) return;
         if (event.getEntity() instanceof ServerPlayer player) {
-            ProneManager.tick(player);
+            if (BattlefieldMovement.enabled()) {
+                ProneManager.tick(player);
+                ProneGeometry.refresh(player);
+            }
+            SlideGeometry.refresh(player);
         }
     }
 

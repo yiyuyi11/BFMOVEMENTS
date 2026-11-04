@@ -1,6 +1,6 @@
 # 战地机动 · Battlefield Movement
 
-> Minecraft **1.21.1** ｜ NeoForge **21.1.233+** ｜ 版本 **1.5.6**
+> Minecraft **1.21.1** ｜ NeoForge **21.1.233+** ｜ 版本 **1.7.7**
 > `mod id: battlefield_movement` ｜ `package: cn.bfm`
 > 配套：BattlefieldOps **0.8.30-handoff**、TaCZ 1.1.8（可选）、PlayerAnimator 2.0.4（可选）
 

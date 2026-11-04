@@ -4,8 +4,12 @@ import cn.bfm.client.CameraSmoother;
 import cn.bfm.ActionEyeHeight;
 import net.minecraft.client.Camera;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -20,9 +24,32 @@ public abstract class CameraMixin {
     private float eyeHeight;
     @Shadow
     private float eyeHeightOld;
+    @Shadow public abstract Vec3 getPosition();
+    @Shadow protected abstract void setPosition(Vec3 position);
 
     @Unique
     private Entity battlefieldMovement$heightOwner;
+
+    @Inject(method = "setup", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/Camera;setPosition(DDD)V", shift = At.Shift.AFTER))
+    private void battlefieldMovement$proneHead(BlockGetter level, Entity entity, boolean detached,
+                                               boolean thirdPerson, float partial, CallbackInfo ci) {
+        if (!(entity instanceof LocalPlayer player) || !cn.bfm.client.ProneClient.isProne(player)) return;
+        float amount = cn.bfm.client.ProneClient.amount(player, partial);
+        // The prone model lays the head ahead of the entity pivot. Follow the
+        // body's heading so free look doesn't orbit the view around the player.
+        float yaw = Mth.rotLerp(partial, player.yBodyRotO, player.yBodyRot);
+        Vec3 start = getPosition();
+        Vec3 direction = cn.bfm.ProneGeometry.forward(yaw);
+        double distance = cn.bfm.ProneGeometry.HEAD_FORWARD * amount;
+        if (distance < .001) return;
+        Vec3 end = start.add(direction.scale(distance));
+        var hit = level.clip(new ClipContext(start, end, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, player));
+        if (hit.getType() != HitResult.Type.MISS) {
+            end = start.add(direction.scale(Math.max(0, start.distanceTo(hit.getLocation()) - .08)));
+        }
+        setPosition(end);
+    }
 
     @Inject(method = "setup", at = @At("HEAD"))
     private void battlefieldMovement$camera(BlockGetter level, Entity entity, boolean detached,

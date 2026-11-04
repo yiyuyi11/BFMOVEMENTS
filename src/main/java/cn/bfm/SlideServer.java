@@ -25,6 +25,11 @@ public final class SlideServer {
         long now = System.currentTimeMillis();
         long last = LAST_BROADCAST.getOrDefault(player.getUUID(), 0L);
         if (payload.active()) {
+            if (!BattlefieldMovement.enabled() || !BfmConfig.SLIDE_ENABLED.get()
+                    || !player.isAlive() || player.isSpectator() || player.isPassenger()
+                    || player.isInWater() || player.isFallFlying() || ProneState.isProne(player)
+                    || DiveServer.isDiving(player)) return;
+            duration = Math.min(duration, BfmConfig.SLIDE_MAX_TICKS.get());
             ACTIVE_UNTIL.put(player.getUUID(), player.level().getGameTime() + duration);
             if (now - last < MIN_INTERVAL_MS) {
                 return;
@@ -34,6 +39,7 @@ public final class SlideServer {
             LAST_BROADCAST.remove(player.getUUID());
             ACTIVE_UNTIL.remove(player.getUUID());
         }
+        SlideGeometry.refresh(player);
         PacketDistributor.sendToPlayersTrackingEntity(player,
                 new SlideSyncPayload(player.getId(), payload.active(), duration, payload.dirX(), payload.dirZ()));
     }

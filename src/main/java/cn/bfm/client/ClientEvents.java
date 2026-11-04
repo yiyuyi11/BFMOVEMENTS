@@ -25,6 +25,7 @@ public final class ClientEvents {
     private static boolean desiredDown;
     private static long lastRequest=Long.MIN_VALUE;
     private static int slideBuffer;
+    private static boolean slideHeld;
 
     public static void init() {
         // Static subscription only; kept for the mod constructor's client branch.
@@ -43,6 +44,7 @@ public final class ClientEvents {
             AnimController.reset();
             AnimBridge.clearAll();
             proneHeld = false;
+            slideHeld = false;
             sneakHeld = false;
             lastRequest=Long.MIN_VALUE;desiredDown=false;slideBuffer=0;
             return;
@@ -63,13 +65,20 @@ public final class ClientEvents {
             ProneClient.reset();
             PronePoseRenderer.reset();
             CameraSmoother.reset();
+            AnimController.reset();
+            for (var subject : client.level.players()) cn.bfm.SlideGeometry.refresh(subject);
             proneHeld = false;
+            slideHeld = false;
             return;
         }
         handleKeys(client);
         SlideClient.tick(client);
         DiveClient.tick(client);
         ProneClient.tick(client);
+        for (var subject : client.level.players()) {
+            cn.bfm.ProneGeometry.refresh(subject);
+            cn.bfm.SlideGeometry.refresh(subject);
+        }
         PronePoseRenderer.tick(client);
         CameraSmoother.tick();
         AnimController.tick();
@@ -115,6 +124,7 @@ public final class ClientEvents {
         AnimController.reset();
         AnimBridge.clearAll();
         proneHeld = false;
+        slideHeld = false;
         sneakHeld = false;
         lastRequest=Long.MIN_VALUE;desiredDown=false;slideBuffer=0;
     }
@@ -159,6 +169,7 @@ public final class ClientEvents {
             if(BfmConfig.PRONE_HOLD.get())DiveClient.releaseStanceHold();
             proneHeld = BfmKeys.PRONE.isDown();
             sneakHeld = client.options.keyShift.isDown();
+            slideHeld = slideKeyboardDown(client);
             while(BfmKeys.SLIDE.consumeClick()){}
             slideBuffer=0;
             return;
@@ -173,7 +184,11 @@ public final class ClientEvents {
             releaseProne(player);
         }
 
-        while (BfmKeys.SLIDE.consumeClick()) {
+        boolean keyboardDown = slideKeyboardDown(client);
+        boolean pressed = keyboardDown && !slideHeld;
+        slideHeld = keyboardDown;
+        while (BfmKeys.SLIDE.consumeClick()) pressed = true;
+        if (pressed) {
             if(ProneClient.phase(player)==ProneClient.EXITING)slideBuffer=8;
             else if (!SlideClient.isActive() && !DiveClient.isActive()) {
                 SlideClient.start(player);
@@ -196,6 +211,13 @@ public final class ClientEvents {
             sneakHeld = false;
             SlideClient.clearSneakSuppression();
         }
+    }
+
+    private static boolean slideKeyboardDown(Minecraft client) {
+        var key = BfmKeys.SLIDE.getKey();
+        return BfmKeys.SLIDE.getKeyModifier() == net.neoforged.neoforge.client.settings.KeyModifier.NONE
+                && key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM && key.getValue() >= 0
+                && com.mojang.blaze3d.platform.InputConstants.isKeyDown(client.getWindow().getWindow(), key.getValue());
     }
 
     private static void pressProne(LocalPlayer player) {
