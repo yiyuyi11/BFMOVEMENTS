@@ -199,15 +199,10 @@ public final class ProneManager {
         if (speed == null) {
             return;
         }
-        if (prone) {
-            double penalty = Math.max(0.0, Math.min(0.8, BfmConfig.PRONE_SPEED_PENALTY.get()));
-            if (penalty > 0.0) {
-                speed.addOrUpdateTransientModifier(
-                        new AttributeModifier(SPEED_ID, -penalty, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
-            }
-        } else {
-            speed.removeModifier(SPEED_ID);
-        }
+        double penalty = prone ? Math.max(0.0, Math.min(0.8, BfmConfig.PRONE_SPEED_PENALTY.get())) : 0.0;
+        if (penalty <= 0.0) speed.removeModifier(SPEED_ID);
+        else speed.addOrUpdateTransientModifier(
+                new AttributeModifier(SPEED_ID, -penalty, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
 
     private static boolean canEnter(ServerPlayer player) {

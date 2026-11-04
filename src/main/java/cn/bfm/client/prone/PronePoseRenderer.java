@@ -159,7 +159,9 @@ public final class PronePoseRenderer {
             roll=cn.bfm.StanceTransition.angle(ENTER_ROLL.getOrDefault(player.getId(),0f)*Mth.DEG_TO_RAD,targetRoll*Mth.DEG_TO_RAD,smooth(progress))*Mth.RAD_TO_DEG;
         }
         if (phase == ProneClient.EXITING) {
-            roll = EXIT_ROLL.getOrDefault(player.getId(), 0.0F) * (1.0F - smooth(progress));
+            // Scale by the lying amount as well as by the exit progress: the two curves differ, and a roll
+            // that outlives the tilt is exactly the "head stays crooked after standing up" report.
+            roll = EXIT_ROLL.getOrDefault(player.getId(), 0.0F) * (1.0F - smooth(progress)) * prone;
         }
         if (!transition) {
             float previousRoll = ROLL.getOrDefault(player.getId(), roll);
@@ -471,6 +473,27 @@ public final class PronePoseRenderer {
         rotate(part, old.slerp(new Quaternionf().rotationZYX(target.zRot, target.yRot, target.xRot), t));
     }
 
+
+    /**
+     * Zeroes only the roll channel of the parts a prone or dive pose can rotate.
+     *
+     * <p>Vanilla's model setup rewrites xRot and yRot every frame but leaves zRot alone, so a pose that has
+     * ended would otherwise keep its last roll forever — visible as a head that stays tilted after standing up.
+     */
+    public static void clearRoll(PlayerModel<?> model) {
+        model.head.zRot = 0.0F;
+        model.body.zRot = 0.0F;
+        model.leftArm.zRot = 0.0F;
+        model.rightArm.zRot = 0.0F;
+        model.leftLeg.zRot = 0.0F;
+        model.rightLeg.zRot = 0.0F;
+        model.hat.zRot = 0.0F;
+        model.jacket.zRot = 0.0F;
+        model.leftSleeve.zRot = 0.0F;
+        model.rightSleeve.zRot = 0.0F;
+        model.leftPants.zRot = 0.0F;
+        model.rightPants.zRot = 0.0F;
+    }
     private static void resetParts(PlayerModel<?> model, boolean keepReloadArms) {
         for (ModelPart part : List.of(model.head, model.body, model.leftLeg, model.rightLeg)) {
             part.resetPose();

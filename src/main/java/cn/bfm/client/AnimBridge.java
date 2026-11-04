@@ -46,6 +46,7 @@ public final class AnimBridge {
         private static final Map<UUID, dev.kosmx.playerAnim.api.layered.ModifierLayer<
                 dev.kosmx.playerAnim.api.layered.IAnimation>> LAYERS = new HashMap<>();
         private static final Map<Integer, UUID> BY_ENTITY = new HashMap<>();
+        private static final java.util.Set<String> MISSING = new java.util.HashSet<>();
 
         private static void play(AbstractClientPlayer player, String animation, int fadeTicks) {
             try {
@@ -53,6 +54,7 @@ public final class AnimBridge {
                 dev.kosmx.playerAnim.api.IPlayable playable =
                         dev.kosmx.playerAnim.minecraftApi.PlayerAnimationRegistry.getAnimation(id);
                 if (playable == null) {
+                    if (MISSING.add(animation)) BattlefieldMovement.LOG.warn("Missing movement animation {}", id);
                     return;
                 }
                 dev.kosmx.playerAnim.api.layered.AnimationStack stack =

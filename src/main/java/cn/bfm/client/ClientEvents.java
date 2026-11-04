@@ -100,12 +100,26 @@ public final class ClientEvents {
         lastRequest=Long.MIN_VALUE;desiredDown=false;slideBuffer=0;
     }
 
+    private static long rollReportedAt;
+
     @SubscribeEvent
     public static void cameraAngles(ViewportEvent.ComputeCameraAngles event) {
         if (event.getCamera().getEntity() instanceof LocalPlayer) {
             float partial = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
             // Do not tilt the aim ray independently of the rotation sent to the server.
-            event.setRoll(event.getRoll() + DiveClient.cameraRoll(partial));
+            float extraRoll = DiveClient.cameraRoll(partial);
+            event.setRoll(event.getRoll() + extraRoll);
+            // Diagnostic only: reports the camera roll and the stance state while either is non-neutral, so
+            // a "head stays tilted after standing up" report can be traced to a source instead of guessed at.
+            long rollNow = System.currentTimeMillis();
+            int rollPhase = ProneClient.phase(Minecraft.getInstance().player);
+            if ((Math.abs(extraRoll) > 0.4F || rollPhase != ProneClient.STANDING) && rollNow - rollReportedAt > 500L) {
+                rollReportedAt = rollNow;
+                cn.bfm.BattlefieldMovement.LOG.info("[BFM] camera roll={} extra={} pronePhase={} proneAmount={} progress={}",
+                        String.format("%.2f", event.getRoll()), String.format("%.2f", extraRoll), rollPhase,
+                        String.format("%.3f", ProneClient.amount(Minecraft.getInstance().player, partial)),
+                        String.format("%.3f", ProneClient.progress(Minecraft.getInstance().player, partial)));
+            }
         }
     }
 

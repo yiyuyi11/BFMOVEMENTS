@@ -23,8 +23,12 @@ public abstract class PlayerModelMixin {
         PlayerModel<?> model = (PlayerModel<?>) (Object) this;
         if (PronePoseRenderer.active(player)) {
             PronePoseRenderer.applyPose(player, model);
-        } else {
+        } else if (DivePoseRenderer.active(player)) {
             DivePoseRenderer.applyPose(player, model);
+        } else {
+            // No pose owns this model any more: drop the roll a previous pose left behind, or the head would
+            // stay tilted for the rest of the session.
+            PronePoseRenderer.clearRoll(model);
         }
     }
 }
