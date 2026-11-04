@@ -9,10 +9,12 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 public final class CommonEvents {
     @SubscribeEvent
     public void login(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!BattlefieldMovement.enabled()) return;
         if (event.getEntity() instanceof ServerPlayer player) BfmNetwork.sendEyeSettings(player);
     }
     @SubscribeEvent
     public void tick(PlayerTickEvent.Post event) {
+        if (!BattlefieldMovement.enabled()) return;
         if (event.getEntity() instanceof ServerPlayer player) {
             ProneManager.tick(player);
         }
@@ -20,6 +22,7 @@ public final class CommonEvents {
 
     @SubscribeEvent
     public void startTracking(PlayerEvent.StartTracking event) {
+        if (!BattlefieldMovement.enabled()) return;
         if (event.getEntity() instanceof ServerPlayer viewer && event.getTarget() instanceof ServerPlayer subject) {
             ProneManager.sendCurrent(viewer, subject);
         }
@@ -27,6 +30,7 @@ public final class CommonEvents {
 
     @SubscribeEvent
     public void logout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (!BattlefieldMovement.enabled()) return;
         if (event.getEntity() instanceof ServerPlayer player) {
             ProneManager.clear(player, false);
             SlideServer.clear(player.getUUID());
@@ -36,6 +40,7 @@ public final class CommonEvents {
 
     @SubscribeEvent
     public void respawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (!BattlefieldMovement.enabled()) return;
         if (event.getEntity() instanceof ServerPlayer player) {
             ProneManager.clear(player, true);
         }
@@ -43,6 +48,7 @@ public final class CommonEvents {
 
     @SubscribeEvent
     public void changedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (!BattlefieldMovement.enabled()) return;
         if (event.getEntity() instanceof ServerPlayer player) {
             ProneManager.clear(player, true);
         }

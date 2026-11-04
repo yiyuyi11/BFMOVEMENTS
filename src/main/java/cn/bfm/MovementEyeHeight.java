@@ -5,6 +5,7 @@ import net.minecraft.world.entity.player.Player;
 /** Shared eye-height offset for the lowered slide/dive first-person camera. */
 public final class MovementEyeHeight {
     public static float offset(Player player) {
+        if (!BattlefieldMovement.enabled()) return 0.0F;
         if (player == null || !player.isAlive()) {
             return 0.0F;
         }
