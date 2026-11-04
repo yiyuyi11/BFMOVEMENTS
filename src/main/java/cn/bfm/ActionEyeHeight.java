@@ -10,7 +10,7 @@ import net.minecraft.world.entity.player.Player;
  */
 public final class ActionEyeHeight {
     public static float slideHeight() {
-        return Math.max(0.08F, 1.62F - (float) (double) BfmConfig.SLIDE_CAMERA_DROP.get());
+        return net.minecraft.util.Mth.clamp(1.62F - (float) (double) BfmConfig.SLIDE_CAMERA_DROP.get(), 0.08F, (float) SlideGeometry.HEIGHT - .06F);
     }
 
     public static float diveHeight() {

@@ -54,9 +54,10 @@ public final class PronePoseRenderer {
         double previousPhase;
         double weight;
         double previousWeight;
-        double forward = 1.0;
+        double forward;
+        double previousForward;
+        double previousSide;
         double side;
-        boolean moving;
     }
 
     public static void tick(Minecraft client) {
@@ -90,16 +91,15 @@ public final class PronePoseRenderer {
                 distance = 0.0;
             }
             boolean moving = distance > 0.002;
-            if (moving != motion.moving) {
-                motion.moving = moving;
-            }
             motion.previousWeight = motion.weight;
             motion.previousPhase = motion.phase;
             motion.weight = Mth.clamp(motion.weight + (moving ? 1.0 : -1.0) / 6.0, 0.0, 1.0);
+            motion.previousForward = motion.forward;
+            motion.previousSide = motion.side;
             if (moving) {
                 double yaw = Math.toRadians(player.yBodyRot);
-                motion.forward = (-dx * Math.sin(yaw) + dz * Math.cos(yaw)) / distance;
-                motion.side = (dx * Math.cos(yaw) + dz * Math.sin(yaw)) / distance;
+                motion.forward = Mth.lerp(.38, motion.forward, (-dx * Math.sin(yaw) + dz * Math.cos(yaw)) / distance);
+                motion.side = Mth.lerp(.38, motion.side, (dx * Math.cos(yaw) + dz * Math.sin(yaw)) / distance);
                 motion.phase += distance * 7.5;
             }
         }
@@ -133,8 +133,8 @@ public final class PronePoseRenderer {
             if(last!=null)ENTER_POSE.put(player.getId(),last.clone());
         }else if(phase!=ProneClient.ENTERING){ENTER_POSE.remove(player.getId());ENTER_ROLL.remove(player.getId());}
         float progress = ProneClient.progress(player, partial);
-        float anchor = Mth.lerp(partial, player.yBodyRotO, player.yBodyRot);
-        float headYaw = Mth.lerp(partial, player.yHeadRotO, player.yHeadRot);
+        float anchor = Mth.rotLerp(partial, player.yBodyRotO, player.yBodyRot);
+        float headYaw = Mth.rotLerp(partial, player.yHeadRotO, player.yHeadRot);
         float aim = Mth.wrapDegrees(headYaw - anchor);
         boolean transition = phase == ProneClient.ENTERING || phase == ProneClient.EXITING;
         PronePoseData.Sample sample;
@@ -171,8 +171,8 @@ public final class PronePoseRenderer {
         ROLL.put(player.getId(),roll);
         Motion motion = MOTION.get(player.getId());
         double movement = motion == null ? 0.0D : Mth.lerp(partial, motion.previousWeight, motion.weight);
-        double forward = motion == null ? 1.0D : motion.forward;
-        double side = motion == null ? 0.0D : motion.side;
+        double forward = motion == null ? 0.0D : Mth.lerp(partial, motion.previousForward, motion.forward);
+        double side = motion == null ? 0.0D : Mth.lerp(partial, motion.previousSide, motion.side);
         double stride = motion == null ? 0.0D : Mth.lerp(partial, motion.previousPhase, motion.phase);
         VISUAL.put(player.getId(), new Visual(sample, anchor, prone, roll, aim,
                 movement, forward, side, stride, transition, progress));
@@ -193,6 +193,8 @@ public final class PronePoseRenderer {
             return false;
         }
         stack.mulPose(Axis.YP.rotationDegrees(180.0F - visual.anchor));
+        double groundLift = (cn.bfm.BfmConfig.PRONE_GROUND_LIFT.get() - .98D) * .2D;
+        stack.translate(0, groundLift * visual.prone, -cn.bfm.ProneGeometry.MODEL_CENTER_SHIFT * visual.prone);
         PronePoseData.Transform root = visual.sample.root();
         if (visual.transition) {
             stack.translate(0.0D, root.y / 16.0D, root.z / 16.0D);
@@ -203,10 +205,6 @@ public final class PronePoseRenderer {
         if (!visual.transition) {
             stack.translate(root.x / 16.0D, root.y / 16.0D, root.z / 16.0D);
         }
-        // The addon root lowers the model by one block; without its per-cube
-        // ground scan the body/limbs end up under the floor. Cancel most of that
-        // translation and keep a small clearance.
-        stack.translate(0.0D, cn.bfm.BfmConfig.PRONE_GROUND_LIFT.get() * visual.prone, 0.0D);
         return true;
     }
 
@@ -402,30 +400,28 @@ public final class PronePoseRenderer {
         double forward = visual.forward;
         double side = visual.side;
         double weight = visual.movement;
-        double cycle = visual.stride * (forward < -0.15D ? -1 : 1);
-        double a = Math.sin(cycle);
-        double b = Math.cos(cycle);
-        double left = (1.0D + b) * 0.5D;
-        double right = (1.0D - b) * 0.5D;
+        double reach = Math.sin(visual.stride);
+        double left = (1.0D + Math.cos(visual.stride)) * 0.5D;
+        double right = 1.0D - left;
+        double lateral = Math.abs(side);
+        double leftBrace = left * (1.0D + Math.max(0.0D, side) * .30D);
+        double rightBrace = right * (1.0D + Math.max(0.0D, -side) * .30D);
 
-        model.leftLeg.xRot += (float) ((0.04D + left * 0.22D) * weight);
-        model.rightLeg.xRot += (float) ((0.04D + right * 0.22D) * weight);
-        model.leftLeg.yRot += (float) (side * 0.2D * weight);
-        model.rightLeg.yRot += (float) (side * 0.2D * weight);
-        model.leftLeg.zRot -= (float) ((0.1D + left * 0.2D) * weight);
-        model.rightLeg.zRot += (float) ((0.1D + right * 0.2D) * weight);
-        model.leftLeg.y -= (float) (left * 2.8D * weight);
-        model.rightLeg.y -= (float) (right * 2.8D * weight);
-        model.leftLeg.x += (float) ((a * 0.65D + side * left * 1.2D) * weight);
-        model.rightLeg.x += (float) ((-a * 0.65D + side * right * 1.2D) * weight);
-        model.leftLeg.z += (float) (Math.max(0.0D, a) * 1.25D * weight);
-        model.rightLeg.z += (float) (Math.max(0.0D, -a) * 1.25D * weight);
+        model.leftLeg.xRot += (float) (leftBrace * .18D * weight);
+        model.rightLeg.xRot += (float) (rightBrace * .18D * weight);
+        model.leftLeg.zRot -= (float) ((.05D + leftBrace * (.08D + .09D * lateral)) * weight);
+        model.rightLeg.zRot += (float) ((.05D + rightBrace * (.08D + .09D * lateral)) * weight);
+        model.leftLeg.y -= (float) ((left * 1.6D + reach * forward * .5D) * weight);
+        model.rightLeg.y -= (float) ((right * 1.6D - reach * forward * .5D) * weight);
+        model.leftLeg.x += (float) (side * left * .9D * weight);
+        model.rightLeg.x += (float) (side * right * .9D * weight);
 
         if (!keepReloadArms) {
-            blendPose(model.leftArm, PartPose.offsetAndRotation(5.0F, 2.0F + (float) (a * 0.9D), 0.0F,
-                    (float) Math.toRadians(-174.0D), 0.0F, -0.12F), weight);
-            blendPose(model.rightArm, PartPose.offsetAndRotation(-5.0F, 2.0F - (float) (a * 0.9D), 0.0F,
-                    (float) Math.toRadians(-174.0D), 0.0F, 0.12F), weight);
+            // Keep the authored aiming pose and move the shoulders subtly under it.
+            model.leftArm.x += (float) (side * right * .45D * weight);
+            model.rightArm.x += (float) (side * left * .45D * weight);
+            model.leftArm.y += (float) (reach * forward * .65D * weight);
+            model.rightArm.y -= (float) (reach * forward * .65D * weight);
         }
     }
 

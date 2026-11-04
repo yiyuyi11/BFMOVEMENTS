@@ -51,6 +51,15 @@ public final class TaczProneCompat {
         }
     }
 
+    static boolean isFirearm(net.minecraft.world.item.ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        if (AVAILABLE && Impl.isGun(stack)) return true;
+        for (Class<?> type = stack.getItem().getClass(); type != null; type = type.getSuperclass()) {
+            if (type.getName().equals("com.atsuishio.superbwarfare.item.gun.GunItem")) return true;
+        }
+        return false;
+    }
+
     private static boolean isExternalGun(AbstractClientPlayer player) {
         String namespace = BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).getNamespace();
         return namespace.equals("superbwarfare");
@@ -62,6 +71,10 @@ public final class TaczProneCompat {
             if (event.getShooter() instanceof AbstractClientPlayer player) {
                 LAST_SHOT.put(player.getUUID(), player.level().getGameTime());
             }
+        }
+
+        private static boolean isGun(net.minecraft.world.item.ItemStack stack) {
+            return stack.getItem() instanceof com.tacz.guns.api.item.IGun;
         }
 
         private static boolean isReloading(AbstractClientPlayer player) {

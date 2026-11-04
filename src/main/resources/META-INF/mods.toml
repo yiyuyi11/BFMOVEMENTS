@@ -6,7 +6,7 @@ displayURL = ""
 
 [[mods]]
 modId = "battlefield_movement"
-version="1.6.3-forge1201"
+version="1.7.7-forge1201"
 displayName = "战地机动 · Battlefield Movement"
 authors = "Battlefield Movement"
 description = '''滑铲 / 飞扑 / 战术趴地，趴地动作直接移植 Tacz Animation Additions 1.2.12。

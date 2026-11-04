@@ -17,10 +17,13 @@ public final class CommonEvents {
     }
     @SubscribeEvent
     public void tick(PlayerTickEvent event) {
-        if (!BattlefieldMovement.enabled()) return;
-        if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         if (event.player instanceof ServerPlayer player) {
-            ProneManager.tick(player);
+            if (BattlefieldMovement.enabled()) {
+                ProneManager.tick(player);
+                ProneGeometry.refresh(player);
+            }
+            SlideGeometry.refresh(player);
         }
     }
 
