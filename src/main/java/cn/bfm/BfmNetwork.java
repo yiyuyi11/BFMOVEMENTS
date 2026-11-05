@@ -9,7 +9,7 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.api.distmarker.Dist;
 
 public final class BfmNetwork {
- private static final String VERSION="forge1201-6";
+ private static final String VERSION="forge1201-7";
  private static final SimpleChannel CHANNEL=NetworkRegistry.newSimpleChannel(new ResourceLocation("battlefield_movement","main"),()->VERSION,VERSION::equals,VERSION::equals);
  public static void register(){
   CHANNEL.messageBuilder(ProneRequestPayload.class,0,NetworkDirection.PLAY_TO_SERVER).encoder(ProneRequestPayload::encode).decoder(ProneRequestPayload::decode).consumerMainThread((p,ctx)->{

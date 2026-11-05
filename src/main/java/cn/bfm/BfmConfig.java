@@ -30,8 +30,11 @@ public final class BfmConfig {
 
     public static final ForgeConfigSpec.BooleanValue PRONE_ENABLED;
     public static final ForgeConfigSpec.BooleanValue PRONE_HOLD;
-    public static final ForgeConfigSpec.DoubleValue PRONE_SPEED_PENALTY;
+    public static final ForgeConfigSpec.DoubleValue PRONE_SPEED_SCALE;
+    public static final ForgeConfigSpec.DoubleValue PRONE_STRIDE_SPEED;
     public static final ForgeConfigSpec.DoubleValue PRONE_GROUND_LIFT;
+    public static final ForgeConfigSpec.DoubleValue PRONE_FIRE_DELAY;
+    public static final ForgeConfigSpec.DoubleValue STAND_FIRE_DELAY;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -74,10 +77,21 @@ public final class BfmConfig {
         PRONE_ENABLED = b.comment("Enable the prone stance.").define("enabled", true);
         PRONE_HOLD = b.comment("Hold the prone key to stay prone instead of toggling.")
                 .define("hold", false);
-        PRONE_SPEED_PENALTY = b.comment("Movement speed reduction while prone (0.35 = -35%).")
-                .defineInRange("speed_penalty", 0.35D, 0.0D, 0.80D);
+        PRONE_SPEED_SCALE = b.comment("Prone movement speed as a fraction of standing speed.",
+                        "0.65 = 65% of the standing speed, 1.0 = no slowdown, 0.0 = cannot move.")
+                .defineInRange("speed_scale", 0.65D, 0.0D, 1.0D);
+        PRONE_STRIDE_SPEED = b.comment("How fast the prone crawl animation cycles, as a fraction of the original rate.",
+                        "1.0 is the original speed; lower values make the legs move more slowly.")
+                .defineInRange("stride_speed", 1.0D, 0.05D, 2.0D);
         PRONE_GROUND_LIFT = b.comment("Root lift for the ported prone pose; raise if limbs clip into the floor.")
                 .defineInRange("ground_lift", 0.98D, 0.0D, 1.20D);
+        b.pop();
+
+        b.push("combat");
+        PRONE_FIRE_DELAY = b.comment("Seconds without shooting after going prone or starting a dive; 0 disables.")
+                .defineInRange("prone_fire_delay_seconds", 1.0D, 0.0D, 10.0D);
+        STAND_FIRE_DELAY = b.comment("Seconds without shooting after starting to rise from prone; 0 disables.")
+                .defineInRange("stand_fire_delay_seconds", 0.7D, 0.0D, 10.0D);
         b.pop();
 
         SPEC = b.build();

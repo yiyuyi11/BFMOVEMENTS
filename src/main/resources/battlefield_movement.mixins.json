@@ -11,7 +11,8 @@
     "ProneBoundingBoxMixin",
     "ForcedPoseMixin",
     "LivingEntityJumpMixin",
-    "TaczCrawlPoseGuardServerMixin"
+    "TaczCrawlPoseGuardServerMixin",
+    "TaczStanceFireLockMixin"
   ],
   "client": [
     "ProneSwimAnimationMixin",

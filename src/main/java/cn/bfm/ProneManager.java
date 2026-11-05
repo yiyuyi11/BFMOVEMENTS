@@ -50,7 +50,8 @@ public final class ProneManager {
                 broadcast(player);
                 return;
             }
-            float from=current!=null?eyeHeight(player):SlideServer.isSliding(player)?ActionEyeHeight.slideHeight():player.getEyeHeight();
+            float from=current!=null?eyeHeight(player):SlideServer.isSliding(player)?ActionEyeHeight.slideHeight():DiveServer.isDiving(player)?DiveServer.eyeHeight(player):player.getEyeHeight();
+            StanceFireLock.begin(player,true);
             int phase = instant ? PRONE : ENTERING;
             ACTIVE.put(player.getUUID(), new Entry(phase, now(player), instant ? 0 : StanceTransition.duration(from,true),StanceTransition.clampEye(from)));
             player.setForcedPose(Pose.SWIMMING);
@@ -69,6 +70,7 @@ public final class ProneManager {
                 return;
             }
             float from=eyeHeight(player);
+            StanceFireLock.begin(player,false);
             ACTIVE.put(player.getUUID(), new Entry(EXITING, now(player),StanceTransition.duration(from,false),from));
             broadcast(player);
         }
@@ -101,6 +103,7 @@ public final class ProneManager {
             if (!canStand(player)) {
                 // Abort toward the current prone pose instead of finishing the camera inside a ceiling.
                 float from=eyeHeight(player);
+                StanceFireLock.begin(player,true);
                 ACTIVE.put(player.getUUID(),new Entry(ENTERING,now(player),StanceTransition.duration(from,true),from));
                 broadcast(player);
                 return;
@@ -144,6 +147,7 @@ public final class ProneManager {
         if (player == null) {
             return;
         }
+        StanceFireLock.clear(player);
         Entry removed = ACTIVE.remove(player.getUUID());
         if (removed != null) {
             releasePose(player);
@@ -182,7 +186,10 @@ public final class ProneManager {
         if (speed == null) {
             return;
         }
-        double penalty = prone ? Math.max(0.0, Math.min(0.8, BfmConfig.PRONE_SPEED_PENALTY.get())) : 0.0;
+        // Configured as a fraction of standing speed, so the penalty is its complement. A scale of 1.0
+        // means no slowdown at all, which is why the reduction can legitimately be exactly zero.
+        double scale = Math.max(0.0, Math.min(1.0, BfmConfig.PRONE_SPEED_SCALE.get()));
+        double penalty = prone ? 1.0 - scale : 0.0;
         var modifier = speed.getModifier(SPEED_ID);
         if (modifier != null && penalty > 0.0 && modifier.getAmount() == -penalty) return;
         if (modifier != null) speed.removeModifier(SPEED_ID);

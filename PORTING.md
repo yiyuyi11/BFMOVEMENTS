@@ -1,34 +1,12 @@
-# Battlefield Movement — 1.20.1 Forge 移植分支
+# Battlefield Movement 移植记录
 
-**构建状态：通过。** `clean build` 成功，Forge 47.4.16 / Java 17 / Minecraft 1.20.1。
+已通过 Java 17 编译、ForgeGradle 构建及重新混淆。尚未在游戏内实测；这是测试移植版。
 
-| 项目 | 值 |
-| --- | --- |
-| 产物 | `battlefield_movement-1.7.1-forge1201.jar` |
-| 版本 | `1.7.1-forge1201` |
-| SHA-256 | `8f15b4398c383fe0cff5c68655f4a7bd0442f4e2fa1c7b5782180173b9e1f7e4` |
-| mixin refmap | 已生成 |
-| 依赖版本范围 | forge `[47,)`，minecraft `[1.20.1,1.20.2)` |
+- 将七种网络消息改接 Forge SimpleChannel，保留方向限制、服务端校验和主线程处理。客户端与服务端必须使用相同移植版本。
+- 保留滑铲、飞扑、趴下/起身衔接、镜头平滑及自定义趴地姿态。
+- 适配 PlayerAnimator 1.0.2-rc1+1.20、属性 UUID、Forge 事件和玩家渲染参数。
+- MixinGradle 生成并打包 SRG refmap；眼高注入使用精确描述符，Forge 新增 setForcedPose 不进行原版混淆映射。
+- 静态核对 19 个原版/TaCZ 注入目标，并核对可选 TaCZ 注入回调参数。
+- 所有 65 个类使用 Java 17 字节码，未残留 NeoForge 包引用。
 
-## 构建
-
-```bash
-# 需要 JDK 17 与 Gradle 8.8（ForgeGradle 6 不支持 Gradle 9）
-gradle build
-```
-
-产物在 `build/libs/`。
-
-## 1.20.1 与 1.21.1 的差异
-
-见本文件下方的逐项说明与提交历史。分支按 1.20.1 的 API 单独维护：
-
-- 网络层用 Forge `SimpleChannel`（无 NeoForge payload 机制）；
-- 事件用 Forge 总线名字，`@EventBusSubscriber` 的 mod 总线监听单独成类；
-- 绘制用 1.20.1 的 `Tesselator.getBuilder()/end()`，没有 `blitSprite`（改为九宫格 `Ui.sprite`）；
-- 枪械/配件数据通过反射读取，先试 1.20.1 的短签名再退回 1.21 的长签名。
-
-## 限制
-
-- 尚未进游戏实测全部功能；分支按“编译通过 + 静态核对”发布；
-- Sable 布娃娃尸体在 1.20.1 不可用（Sable 无 1.20.1 版本），死亡不生成物理尸体。
+仍需游戏内检查：单人世界加载、多人姿态同步、滑铲后趴下、快速起身、TaCZ 射击视线、第三人称与 PlayerAnimator 组合。没有进行这些实测，不能视为正式稳定版。

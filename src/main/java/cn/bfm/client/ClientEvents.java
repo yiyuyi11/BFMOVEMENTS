@@ -26,6 +26,7 @@ public final class ClientEvents {
     private static boolean desiredDown;
     private static long lastRequest=Long.MIN_VALUE;
     private static int slideBuffer;
+    private static boolean bufferSneak;
     private static boolean slideHeld;
 
     public static void init() {
@@ -222,6 +223,7 @@ public final class ClientEvents {
             suppressJump = jumpPressed;
             leaveLowStance(player);
         } else if (pressed && ServerEyeSettings.tuning().slide()) {
+            bufferSneak=false;
             if (ProneClient.isLocalProne() || desiredDownIsPending(player)
                     || DiveClient.isActive() || DiveClient.awaitingLandingProne()) {
                 leaveLowStance(player);
@@ -230,13 +232,15 @@ public final class ClientEvents {
                 SlideClient.start(player);
             }
         } else if (sneakPressed && ServerEyeSettings.tuning().slideOnSneak()) {
-            SlideClient.start(player, true);
+            bufferSneak=true;slideBuffer=6;
+            if(SlideClient.canStart(player)){SlideClient.start(player,true);slideBuffer=0;}
         }
+        if(bufferSneak&&!sneakDown)slideBuffer=0;
 
         if (slideBuffer > 0) {
             slideBuffer--;
             if (!desiredDownIsPending(player) && !DiveClient.awaitingLandingProne() && SlideClient.canStart(player)) {
-                SlideClient.start(player);
+                SlideClient.start(player,bufferSneak);
                 slideBuffer = 0;
             }
         }
@@ -301,7 +305,7 @@ public final class ClientEvents {
 
     private static void requestProne(boolean down) {
         var player=Minecraft.getInstance().player;
-        if(player!=null){desiredDown=down;lastRequest=player.level().getGameTime();}
+        if(player!=null){desiredDown=down;lastRequest=player.level().getGameTime();ProneClient.predictTransition(down);}
         cn.bfm.BfmNetwork.sendToServer(new ProneRequestPayload(down, false));
     }
 

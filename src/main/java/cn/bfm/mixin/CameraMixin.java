@@ -31,7 +31,20 @@ public abstract class CameraMixin {
     private void battlefieldMovement$proneHead(BlockGetter level, Entity entity, boolean detached,
                                                boolean thirdPerson, float partial, CallbackInfo ci) {
         if (entity instanceof LocalPlayer player && ActionEyeHeight.overrides(player)) {
-            setPosition(player.getEyePosition(partial));
+            // Slide only. Prone and dive go through getEyePosition(partial) on purpose: that path runs
+            // ProneGeometry.headPosition, which clips the head against cover, and dive adds its own
+            // per-frame correction inside ActionEyePositionMixin.
+            //
+            // A slide has no such correction, so getEyePosition(partial) would add getEyeHeight(), which
+            // takes no partial tick and therefore only changes once per tick. While the slide height was a
+            // constant that was invisible; now that it is a curve, using it here quantised the camera's Y
+            // axis to 20 Hz while X/Z stayed smooth, which is what read as judder for the whole slide.
+            if (cn.bfm.client.SlideClient.isActive() || cn.bfm.client.SlideClient.settling()) {
+                Vec3 position = player.getPosition(partial);
+                setPosition(position.add(0.0D, Math.max(0.08F, CameraSmoother.eyeHeight(partial)), 0.0D));
+            } else {
+                setPosition(player.getEyePosition(partial));
+            }
         }
     }
 

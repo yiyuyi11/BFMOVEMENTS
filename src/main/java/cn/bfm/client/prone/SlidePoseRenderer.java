@@ -12,6 +12,28 @@ import org.joml.Vector3f;
 
 /** The original reclined slide, applied directly to the third-person model. */
 public final class SlidePoseRenderer {
+    private static final class HeadAim {
+        double time;float yaw,pitch;
+        HeadAim(double time,float yaw,float pitch){this.time=time;this.yaw=yaw;this.pitch=pitch;}
+    }
+    private static final java.util.Map<Integer,HeadAim> HEADS=new java.util.LinkedHashMap<>(64,.75f,true){
+        @Override protected boolean removeEldestEntry(java.util.Map.Entry<Integer,HeadAim> entry){return size()>256;}
+    };
+    private static HeadAim aim(AbstractClientPlayer player,float partial,float yaw,float pitch){
+        double now=player.level().getGameTime()+partial;
+        float targetYaw=Mth.wrapDegrees(Float.isFinite(yaw)?yaw:0),targetPitch=Mth.clamp(Float.isFinite(pitch)?pitch:0,-80,80);
+        HeadAim state=HEADS.get(player.getId());
+        if(state==null||now<state.time||now-state.time>8){
+            state=new HeadAim(now,Mth.clamp(targetYaw,-85,85),targetPitch);HEADS.put(player.getId(),state);return state;
+        }
+        // Looking behind can wrap +179 to -179; keep the nearest shoulder until the body turns.
+        if(Math.abs(targetYaw)>120&&Math.abs(state.yaw)>40)targetYaw=Math.copySign(85,state.yaw);
+        targetYaw=Mth.clamp(targetYaw,-85,85);
+        float elapsed=(float)Math.max(0,Math.min(1,now-state.time));state.time=now;
+        state.yaw+=Mth.clamp(targetYaw-state.yaw,-12*elapsed,12*elapsed);
+        state.pitch+=Mth.clamp(targetPitch-state.pitch,-15*elapsed,15*elapsed);
+        return state;
+    }
     public static void apply(AbstractClientPlayer player, PlayerModel<?> model, float partial, float headYaw, float headPitch) {
         var mc = Minecraft.getInstance();
         if (player == mc.player && mc.options.getCameraType().isFirstPerson()) return;
@@ -41,11 +63,11 @@ public final class SlidePoseRenderer {
         moveJoint(model.rightLeg, waist, hips, change);
         // Shoulder movement carries the head pivot. Its rotation stays on the
         // aim rather than inheriting the torso pitch or a fixed animation frame.
-        model.head.xRot = Mth.lerp(amount,model.head.xRot,headPitch*Mth.DEG_TO_RAD);
-        model.head.yRot = Mth.lerp(amount,model.head.yRot,headYaw*Mth.DEG_TO_RAD);
+        HeadAim aim=aim(player,partial,headYaw,headPitch);
+        model.head.xRot = Mth.lerp(amount,model.head.xRot,aim.pitch*Mth.DEG_TO_RAD);
+        model.head.yRot = Mth.lerp(amount,model.head.yRot,aim.yaw*Mth.DEG_TO_RAD);
         model.head.zRot *= 1-amount;
         steadyArms(player, model, amount, !crouch);
-
         // Right thigh drops toward the floor; left knee leads the slide.
         // Rigid-leg models use a shallower rear-leg angle to clear the ground.
         model.rightLeg.xRot = Mth.lerp(amount,model.rightLeg.xRot,(crouch ? (knees ? 43 : 69) : -89)*Mth.DEG_TO_RAD);
@@ -68,11 +90,26 @@ public final class SlidePoseRenderer {
         var main = player.getMainHandItem();
         var off = player.getOffhandItem();
         // A firearm can use both hands, even when the offhand slot is empty.
-        if (TaczProneCompat.isFirearm(main) || TaczProneCompat.isFirearm(off)) return;
+        //
+        // This must still pose the arms rather than return. TaczAnimationOwnerMixin cancels TaCZ's
+        // playAnimation for the whole slide and TaczProneAnimatorMixin cancels its lower and rotation
+        // layers, so with a gun in hand nothing else drives the arms. Returning here left them on vanilla's
+        // setupAnim walk cycle, which is the arm swinging seen while sliding with a TaCZ gun.
+        if (TaczProneCompat.isFirearm(main) || TaczProneCompat.isFirearm(off)) {
+            holdArms(model, amount);
+            return;
+        }
 
         HumanoidArm primary = player.getMainArm();
         HumanoidArm support = off.isEmpty() ? primary.getOpposite() : main.isEmpty() ? primary : null;
-        if (support == null || !braceGround) return;
+
+        // Both arms still have to be taken over even when nothing is braced against the ground. In the
+        // crouched slide this method used to return early, leaving the arms on vanilla's setupAnim walk
+        // cycle, so they kept swinging with limbSwing while the body was supposed to be locked in a slide.
+        if (!braceGround || support == null) {
+            tuckArms(model, amount);
+            return;
+        }
 
         ModelPart brace = support == HumanoidArm.LEFT ? model.leftArm : model.rightArm;
         float roll = (support == HumanoidArm.LEFT ? -.38f : .38f);
@@ -90,6 +127,35 @@ public final class SlidePoseRenderer {
             free.yRot = Mth.lerp(amount, free.yRot, 0f);
             free.zRot = Mth.lerp(amount, free.zRot, 0f);
         }
+    }
+
+    /**
+     * Fold both arms in and cancel the walk swing for the crouched slide.
+     *
+     * <p>The arms are pulled slightly back and inward so they read as trailing behind the slide rather
+     * than paddling. Interpolating from whatever the model already had keeps the entry smooth.
+     */
+    private static void tuckArms(PlayerModel<?> model, float amount) {
+        applyTuck(model.leftArm, amount, -0.55f, 0.30f, -0.20f);
+        applyTuck(model.rightArm, amount, -0.55f, -0.30f, 0.20f);
+    }
+
+    private static void applyTuck(ModelPart arm, float amount, float pitch, float yaw, float roll) {
+        arm.xRot = Mth.lerp(amount, arm.xRot, pitch);
+        arm.yRot = Mth.lerp(amount, arm.yRot, yaw);
+        arm.zRot = Mth.lerp(amount, arm.zRot, roll);
+    }
+
+    /**
+     * Hold pose for the crouched slide with a gun in hand.
+     *
+     * <p>TaCZ's own layers are cancelled for the duration of the slide, so this is the only thing posing
+     * the arms. They are brought forward and inward into a two-handed carry held low against the slide,
+     * rather than folded at the sides like the empty-handed tuck: the weapon has to stay readable.
+     */
+    private static void holdArms(PlayerModel<?> model, float amount) {
+        applyTuck(model.rightArm, amount, -1.15f, -0.34f, 0.16f);
+        applyTuck(model.leftArm, amount, -1.28f, 0.44f, -0.20f);
     }
 
     private static void moveJoint(ModelPart part, Vector3f waist, Vector3f hips, Quaternionf change) {

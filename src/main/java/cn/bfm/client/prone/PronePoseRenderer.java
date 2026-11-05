@@ -100,7 +100,10 @@ public final class PronePoseRenderer {
                 double yaw = Math.toRadians(cn.bfm.ProneGeometry.bodyYaw(player,1f));
                 motion.forward = Mth.lerp(.38, motion.forward, (-dx * Math.sin(yaw) + dz * Math.cos(yaw)) / distance);
                 motion.side = Mth.lerp(.38, motion.side, (dx * Math.cos(yaw) + dz * Math.sin(yaw)) / distance);
-                motion.phase += distance * 7.5;
+                // Stride rate was a hard-coded 7.5; it is a config knob now. The default of 1.0 leaves the
+                // original speed untouched, and lower values slow the legs down without changing how far
+                // the player actually crawls.
+                motion.phase += distance * 7.5 * cn.bfm.BfmConfig.PRONE_STRIDE_SPEED.get();
             }
         }
     }
@@ -249,6 +252,8 @@ public final class PronePoseRenderer {
         copyWear(model);
         capturePose(player,model);
     }
+
+    public static void rememberExternalPose(AbstractClientPlayer player,PlayerModel<?> model){capturePose(player,model);}
 
     private static void capturePose(AbstractClientPlayer player,PlayerModel<?> model){
         float[] snapshot = LAST_POSE.computeIfAbsent(player.getId(), id -> new float[36]);

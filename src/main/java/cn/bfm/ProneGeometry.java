@@ -55,7 +55,16 @@ public final class ProneGeometry {
         Vec3 ray = player.getViewVector(partial).scale(4);
         double currentReach = reach(player,current,ray);
         if (currentReach >= 4) return interpolated;
-        return reach(player,interpolated,ray) > currentReach+.16 ? current : interpolated;
+        // The interpolated eye sits between the previous and the current tick. Moving forward it is BEHIND
+        // the current eye, so it is farther from anything ahead and its reach is LARGER. Treating that as
+        // cover to protect against was backwards: it fires on ordinary forward motion, and returning
+        // `current` there repeats one tick's position for the rest of the tick, quantising the eye to 20 Hz
+        // (a visible jump every tick while the frame rate stays smooth).
+        //
+        // Only clamp when the interpolated eye actually sees LESS far, which is the direction where it
+        // could be poking past an obstruction the simulation eye cannot see past.
+        double interpolatedReach = reach(player,interpolated,ray);
+        return interpolatedReach < currentReach - .16 ? current : interpolated;
     }
 
     private static double reach(Player player,Vec3 start,Vec3 ray) {
