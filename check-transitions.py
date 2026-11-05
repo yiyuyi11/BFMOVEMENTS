@@ -18,7 +18,7 @@ with zipfile.ZipFile(jar) as z:
 payload=subprocess.run([str(java/'javap.exe'),'-p','-cp',str(jar),'cn.bfm.network.ProneSyncPayload'],capture_output=True,text=True,check=True).stdout
 assert 'float fromEye' in payload and 'yaw' not in payload
 registrar=subprocess.run([str(java/'javap.exe'),'-c','-p','-cp',str(jar),'cn.bfm.BfmNetwork'],capture_output=True,text=True,check=True).stdout
-assert '// String 6' in registrar
-report={'transition_sim':result.stdout.strip(),'protocol':6,'packaged_classes_and_resources':'all match current build','runtime_game_test':False}
+assert '// String 7' in registrar
+report={'transition_sim':result.stdout.strip(),'protocol':7,'packaged_classes_and_resources':'all match current build','runtime_game_test':False}
 (root/'build/transition-validation.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-print('Protocol 6 and complete JAR verification passed')
+print('Protocol 7 and complete JAR verification passed')

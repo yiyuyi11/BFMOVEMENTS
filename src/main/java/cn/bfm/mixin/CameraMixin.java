@@ -51,6 +51,10 @@ public abstract class CameraMixin {
         // Finish from the actual new pose, including a held crouch key. Do not
         // let Camera.tick's half-step towards the previous prone eye height
         // survive as a one-frame downward kick after our exit has completed.
+        //
+        // eyeHeightOld is deliberately flattened to the same value: CameraSmoother.eyeHeight already
+        // applies the frame's partial tick to the stance curve, so letting vanilla lerp between the two
+        // fields again would double-interpolate and make the camera trail the curve.
         float target = active ? CameraSmoother.eyeHeight(partial) : player.getEyeHeight();
         eyeHeight = target;
         eyeHeightOld = target;

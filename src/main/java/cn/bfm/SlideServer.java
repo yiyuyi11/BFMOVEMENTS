@@ -18,6 +18,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class SlideServer {
     private static final Map<UUID, Long> LAST_BROADCAST = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> ACTIVE_UNTIL = new ConcurrentHashMap<>();
+    /**
+     * When the slide began and where the eyes were, mirroring {@link DiveServer}.
+     *
+     * <p>Without these the server would keep spawning bullets from the finished slide height on the very
+     * first tick, while the client's camera is still easing down — the shot would appear to leave from
+     * somewhere the operator is not looking. Both sides now read the same curve.
+     */
+    private static final Map<UUID, Long> STARTED = new ConcurrentHashMap<>();
+    private static final Map<UUID, Float> FROM_EYE = new ConcurrentHashMap<>();
     private static final long MIN_INTERVAL_MS = 250L;
 
     public static void accept(ServerPlayer player, SlidePayload payload) {
@@ -30,6 +39,12 @@ public final class SlideServer {
                     || player.isInWater() || player.isFallFlying() || ProneState.isProne(player)
                     || DiveServer.isDiving(player)) return;
             duration = Math.min(duration, BfmConfig.SLIDE_MAX_TICKS.get());
+            if (!isSliding(player)) {
+                // Only record on a fresh slide: a repeat payload mid-slide must not restart the curve,
+                // or the camera would keep snapping back up and easing down again.
+                STARTED.put(player.getUUID(), player.level().getGameTime());
+                FROM_EYE.put(player.getUUID(), player.getEyeHeight());
+            }
             ACTIVE_UNTIL.put(player.getUUID(), player.level().getGameTime() + duration);
             if (now - last < MIN_INTERVAL_MS) {
                 return;
@@ -38,6 +53,12 @@ public final class SlideServer {
         } else {
             LAST_BROADCAST.remove(player.getUUID());
             ACTIVE_UNTIL.remove(player.getUUID());
+            STARTED.remove(player.getUUID());
+            FROM_EYE.remove(player.getUUID());
+            if(!ProneState.isProne(player)&&!DiveServer.isDiving(player)){
+                player.setShiftKeyDown(payload.crouchAfter());
+                if(payload.crouchAfter())player.setPose(net.minecraft.world.entity.Pose.CROUCHING);
+            }
         }
         SlideGeometry.refresh(player);
         PacketDistributor.sendToPlayersTrackingEntity(player,
@@ -52,9 +73,30 @@ public final class SlideServer {
         return until != null && player.level().getGameTime() < until;
     }
 
+    /**
+     * The player's eye height part-way through the slide's entry.
+     *
+     * <p>Uses the same six-tick smooth curve as the client, so the server's bullet origin and the
+     * camera agree on every frame of the transition. When the slide starts from a crouch, blending from
+     * the recorded {@code FROM_EYE} means the shot follows the crouched height rather than assuming
+     * standing height.
+     */
+    public static float eyeHeight(net.minecraft.world.entity.player.Player player) {
+        if (player == null) {
+            return ActionEyeHeight.slideHeight();
+        }
+        float start = FROM_EYE.getOrDefault(player.getUUID(), StanceTransition.STAND_EYE);
+        long began = STARTED.getOrDefault(player.getUUID(), player.level().getGameTime());
+        float elapsed = player.level().getGameTime() - began;
+        return StanceTransition.blend(start, ActionEyeHeight.slideHeight(), elapsed,
+                StanceTransition.SLIDE_ENTER_TICKS);
+    }
+
     public static void clear(UUID uuid) {
         LAST_BROADCAST.remove(uuid);
         ACTIVE_UNTIL.remove(uuid);
+        STARTED.remove(uuid);
+        FROM_EYE.remove(uuid);
     }
 
     private SlideServer() {

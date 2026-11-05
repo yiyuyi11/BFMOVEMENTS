@@ -30,6 +30,8 @@ public final class DiveClient {
     private static double speed, travelled, lastX, lastZ;
     private static double dirX;
     private static double dirZ;
+    private static float fromEye=1.62F;
+    private static long started;
     private static float camera;
     private static float previousCamera;
     private static float amount;
@@ -46,9 +48,9 @@ public final class DiveClient {
 
     public static float extension(net.minecraft.world.entity.player.Player player, float partial) {
         Long remoteStart = REMOTE.get(player.getId());
-        float age = player == Minecraft.getInstance().player ? ticks
+        float age = player == Minecraft.getInstance().player ? player.level().getGameTime()-started
                 : remoteStart == null ? 0 : player.level().getGameTime() - remoteStart;
-        return cn.bfm.StanceTransition.smooth((age + partial) / 5.0F);
+        return cn.bfm.StanceTransition.smooth((age + partial) / 6.0F);
     }
 
     public static boolean isDiving(net.minecraft.world.entity.player.Player player) {
@@ -88,6 +90,8 @@ public final class DiveClient {
         travelled = 0;
         lastX = player.getX();
         lastZ = player.getZ();
+        fromEye=player.getEyeHeight();started=player.level().getGameTime();
+        cn.bfm.StanceFireLock.begin(player,true);
         active = true;
         standAfterLanding=false;
         ticks = 0;
@@ -116,7 +120,7 @@ public final class DiveClient {
                 }
             } else {
                 if (proneRequestTicks % 2 == 0) {
-                    PacketDistributor.sendToServer(new ProneRequestPayload(true, true));
+                    PacketDistributor.sendToServer(new ProneRequestPayload(true, false));
                 }
                 proneRequestTicks--;
             }
@@ -177,11 +181,11 @@ public final class DiveClient {
     }
 
     public static float cameraRoll(float partial) {
-        return 3.5F * Mth.lerp(partial, previousAmount, amount);
+        return 1.5F * Mth.lerp(partial, previousAmount, amount);
     }
 
     public static float fovBoost(float partial) {
-        return 12.0F * Mth.lerp(partial, previousAmount, amount);
+        return 5.0F * Mth.lerp(partial, previousAmount, amount);
     }
 
     public static void acceptRemote(DiveSyncPayload payload) {
@@ -197,20 +201,26 @@ public final class DiveClient {
         }
     }
 
+    public static float eyeHeight(float partial){
+        var level=Minecraft.getInstance().level;
+        return cn.bfm.StanceTransition.blend(fromEye,ServerEyeSettings.dive(),
+                level==null?6:level.getGameTime()-started+partial,6);
+    }
+
     public static float cameraDrop(float partial) {
-        // Same reasoning as SlideClient.cameraDrop: the server applies the full
-        // configured drop while the dive is active, so the client must too.
-        return active ? 1.62F - ServerEyeSettings.dive() : 0.0F;
+        // Shared six-tick entry curve, sampled at render time instead of a height snap.
+        return active ? 1.62F - eyeHeight(partial) : 0.0F;
     }
 
     private static void land(LocalPlayer player) {
+        float landingEye=eyeHeight(0);
         active = false;
         ticks = 0;
         cooldown = BfmConfig.DIVE_COOLDOWN_TICKS.get();
         if (!standAfterLanding && ServerEyeSettings.tuning().prone()) {
             // Hand collision ownership to prone before ending the dive.
-            ProneClient.predictProne();
-            PacketDistributor.sendToServer(new ProneRequestPayload(true, true));
+            ProneClient.predictFromDive(landingEye);
+            PacketDistributor.sendToServer(new ProneRequestPayload(true, false));
             proneRequestTicks = 8;
         }
         standAfterLanding = false;

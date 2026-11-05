@@ -28,16 +28,40 @@ public final class SlideClient {
 
     private static final int STEP_AIR_TICKS = 5;
 
+    /** Ticks spent lowering the camera at the start of a slide; shared with the server's bullet origin. */
+    private static final int ENTER_TICKS = cn.bfm.StanceTransition.SLIDE_ENTER_TICKS;
+
+    /**
+     * Ticks spent raising the camera again once the slide ends.
+     *
+     * <p>Shorter than the entry: standing up has to feel responsive, whereas dropping into the slide is
+     * the deliberate half. Without this the exit was a hard cut upward, which was the more jarring of the
+     * two ends even after the entrance was smoothed.
+     */
+    private static final int EXIT_TICKS = 4;
     private static boolean active;
     private static boolean suppressSneak;
+    /** Tick the slide ended on, or -1 while it is running; drives the exit curve. */
+    private static long ended = -1L;
+    /** Eye height the exit curve starts from. */
+    private static float exitFrom = 1.62F;
     private static int ticks;
     private static int airTicks;
     private static int cooldown;
     private static double speed, travelled, lastX, lastZ;
     private static double dirX;
     private static double dirZ;
-    private static float camera;
-    private static float previousCamera;
+    /**
+     * Eye height when the slide began, and the tick it began on.
+     *
+     * <p>The slide used to snap the camera between standing and sliding height in a single tick. The
+     * dive already blends its height over a few ticks and reads far smoother, so a slide now carries the
+     * same timeline: record where the eyes started and let {@link #slideEye} walk a smooth curve to the
+     * slide height. Recording {@code fromEye} rather than always starting at 1.62 also makes a slide
+     * started from a crouch continue from the crouched height instead of jumping up first.
+     */
+    private static float fromEye = 1.62F;
+    private static long started;
 
     private static final Map<Integer, Remote> REMOTE = new HashMap<>();
 
@@ -105,6 +129,9 @@ public final class SlideClient {
         active = true;
         ticks = 0;
         airTicks = 0;
+        fromEye = player.getEyeHeight();
+        started = player.level().getGameTime();
+        ended = -1L;
         suppressSneak = viaSneak;
         player.setSprinting(false);
         PacketDistributor.sendToServer(
@@ -119,13 +146,6 @@ public final class SlideClient {
     public static void tick(Minecraft client) {
         if (cooldown > 0) {
             cooldown--;
-        }
-        previousCamera = camera;
-        double configuredDrop = BfmConfig.SLIDE_CAMERA_DROP.get();
-        float target = active ? (float) configuredDrop : 0.0F;
-        camera += (target - camera) * 0.38F;
-        if (Math.abs(target - camera) < 0.001F) {
-            camera = target;
         }
 
         LocalPlayer player = client.player;
@@ -182,6 +202,15 @@ public final class SlideClient {
         if (!active) {
             return;
         }
+        boolean crouch=player!=null && Minecraft.getInstance().options.keyShift.isDown()
+                && !ProneClient.isLocalProne() && !DiveClient.isActive();
+        if(player!=null && !ProneClient.isLocalProne() && !DiveClient.isActive()){
+            player.input.shiftKeyDown=crouch;player.setShiftKeyDown(crouch);
+            if(crouch)player.setPose(net.minecraft.world.entity.Pose.CROUCHING);
+        }
+        // Remember where the eyes were so the camera can ease back up instead of cutting.
+        exitFrom = slideEye(0.0F);
+        ended = player == null || player.level() == null ? 0L : player.level().getGameTime();
         active = false;
         ticks = 0;
         airTicks = 0;
@@ -192,7 +221,7 @@ public final class SlideClient {
         cooldown = ServerEyeSettings.tuning().slideCooldown();
         AnimController.onSlide(player == null ? -1 : player.getId(), false);
         if (send && player != null) {
-            PacketDistributor.sendToServer(new SlidePayload(false, 0, 0.0F, 0.0F));
+            PacketDistributor.sendToServer(new SlidePayload(false, 0, 0.0F, 0.0F,crouch));
         }
     }
 
@@ -209,11 +238,59 @@ public final class SlideClient {
         }
     }
 
+    /**
+     * Eye height part-way through the slide's entry.
+     *
+     * <p>Shared smooth-step curve with the dive and the prone stance, so all three lower the camera the
+     * same way. Sampled at render time with the frame's partial tick, which is what removes the tick-rate
+     * stutter: a height that only changes 20 times a second reads as a series of small jerks, while the
+     * same curve sampled per frame glides.
+     *
+     * @param partial the frame's interpolation fraction, or 0 when called from a tick context
+     */
+    public static float slideEye(float partial) {
+        if (!active) {
+            return ServerEyeSettings.slide();
+        }
+        var level = Minecraft.getInstance().level;
+        float elapsed = level == null ? ENTER_TICKS : level.getGameTime() - started + partial;
+        return cn.bfm.StanceTransition.blend(fromEye, ServerEyeSettings.slide(), elapsed, ENTER_TICKS);
+    }
+
+    /**
+     * True while the camera is still easing back up after the slide ended.
+     *
+     * <p>Reported separately from {@link #isActive()} because the slide itself is over — movement, pose
+     * and the sneak suppression are all finished — while the camera has a few ticks left to travel.
+     */
+    public static boolean settling() {
+        if (ended < 0L) {
+            return false;
+        }
+        var level = Minecraft.getInstance().level;
+        if (level == null) {
+            return false;
+        }
+        return level.getGameTime() - ended < EXIT_TICKS;
+    }
+
+    /**
+     * Eye height during the exit curve.
+     *
+     * <p>Blends from wherever the camera actually was up to the player's current eye height, so a slide
+     * that ended early (still part-way down) does not first snap to the full slide height.
+     */
+    public static float exitEye(float partial) {
+        var level = Minecraft.getInstance().level;
+        float elapsed = level == null ? EXIT_TICKS : level.getGameTime() - ended + partial;
+        float target = cn.bfm.client.CameraSmoother.poseEyeHeight();
+        return cn.bfm.StanceTransition.blend(exitFrom, target, elapsed, EXIT_TICKS);
+    }
+
     public static float cameraDrop(float partial) {
-        // Match the server, which uses the configured drop for the whole slide
-        // window. A client-side ramp made the camera/eye height lag behind the
-        // server bullet origin at the start and end of a slide.
-        return active ? 1.62F - ServerEyeSettings.slide() : 0.0F;
+        // Blend instead of snapping. The eye height, the aim ray and TaCZ's bullet origin all read the
+        // same curve through ActionEyeHeight, so smoothing the camera does not desync the shot.
+        return active ? 1.62F - slideEye(partial) : 0.0F;
     }
 
     public static void reset() {
@@ -223,8 +300,10 @@ public final class SlideClient {
         airTicks = 0;
         cooldown = 0;
         speed = 0.0D;
-        camera = 0.0F;
-        previousCamera = 0.0F;
+        fromEye = 1.62F;
+        started = 0L;
+        ended = -1L;
+        exitFrom = 1.62F;
         REMOTE.clear();
     }
 

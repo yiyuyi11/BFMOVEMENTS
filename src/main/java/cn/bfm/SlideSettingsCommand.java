@@ -25,6 +25,8 @@ final class SlideSettingsCommand {
             .then(Commands.literal("style")
                 .then(Commands.literal("crouch").executes(ctx -> style(ctx.getSource(), true)))
                 .then(Commands.literal("reclined").executes(ctx -> style(ctx.getSource(), false))))
+            .then(decimal("prone_fire_delay", 0, 10, BfmConfig.PRONE_FIRE_DELAY::set))
+            .then(decimal("stand_fire_delay", 0, 10, BfmConfig.STAND_FIRE_DELAY::set))
             .then(decimal("speed", .20, .80, BfmConfig.SLIDE_SPEED::set))
             .then(decimal("min_speed", 0, 1, BfmConfig.SLIDE_MIN_SPEED::set))
             .then(decimal("distance", .5, 16, BfmConfig.SLIDE_DISTANCE::set))
@@ -91,6 +93,9 @@ final class SlideSettingsCommand {
         source.sendSuccess(() -> Component.empty()
             .append(numberButton("最长时长（刻）", "max_ticks", BfmConfig.SLIDE_MAX_TICKS.get()))
             .append(numberButton("冷却（刻）", "cooldown_ticks", BfmConfig.SLIDE_COOLDOWN_TICKS.get())),false);
+        source.sendSuccess(() -> Component.empty()
+            .append(numberButton("趴下禁火（秒）", "prone_fire_delay", BfmConfig.PRONE_FIRE_DELAY.get()))
+            .append(numberButton("起身禁火（秒）", "stand_fire_delay", BfmConfig.STAND_FIRE_DELAY.get())),false);
         return 1;
     }
 

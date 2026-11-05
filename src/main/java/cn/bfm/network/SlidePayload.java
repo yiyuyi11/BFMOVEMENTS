@@ -8,7 +8,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 /** Client -> server: a slide started or ended, so other clients can animate it. */
-public record SlidePayload(boolean active, int duration, float dirX, float dirZ) implements CustomPacketPayload {
+public record SlidePayload(boolean active, int duration, float dirX, float dirZ, boolean crouchAfter) implements CustomPacketPayload {
+ public SlidePayload(boolean active,int duration,float dirX,float dirZ){this(active,duration,dirX,dirZ,false);}
+
     public static final Type<SlidePayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(BattlefieldMovement.MODID, "slide"));
 
@@ -17,6 +19,7 @@ public record SlidePayload(boolean active, int duration, float dirX, float dirZ)
             ByteBufCodecs.VAR_INT, SlidePayload::duration,
             ByteBufCodecs.FLOAT, SlidePayload::dirX,
             ByteBufCodecs.FLOAT, SlidePayload::dirZ,
+            ByteBufCodecs.BOOL, SlidePayload::crouchAfter,
             SlidePayload::new);
 
     @Override

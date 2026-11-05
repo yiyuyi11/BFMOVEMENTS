@@ -4,13 +4,13 @@ public final class StanceTransitionSim {
     private static void check(boolean value){checks++;if(!value)throw new AssertionError("Transition check "+checks);}
     private static boolean near(float a,float b){return Math.abs(a-b)<.00001f;}
     public static void main(String[] args){
-        check(StanceTransition.duration(1.62f,true)==6);
-        check(StanceTransition.duration(.4f,false)==7);
+        check(StanceTransition.duration(1.62f,true)==8);
+        check(StanceTransition.duration(.4f,false)==9);
         for(boolean down:new boolean[]{true,false})for(int step=0;step<=100;step++){
             float start=.4f+1.22f*step/100;
             int ticks=StanceTransition.duration(start,down);
             float target=down?.4f:1.62f,previous=start;
-            check(ticks>=2&&ticks<=(down?6:7));
+            check(ticks>=2&&ticks<=(down?8:9));
             check(near(StanceTransition.height(start,down,0,ticks),start));
             check(near(StanceTransition.height(start,down,ticks,ticks),target));
             for(int i=0;i<=ticks*20;i++){
@@ -24,6 +24,22 @@ public final class StanceTransitionSim {
                 previous=eye;
             }
         }
+        check(StanceTransition.fireDelayTicks(1)==20);
+        check(StanceTransition.fireDelayTicks(.7)==14);
+        check(StanceTransition.fireDelayTicks(0)==0);
+        check(StanceTransition.fireDelayTicks(-1)==0);
+        check(StanceTransition.fireDelayTicks(.025)==1);
+        check(StanceTransition.fireDelayTicks(Double.NaN)==0);
+        for(int i=0;i<=120;i++){
+            float t=i/20f;
+            float height=StanceTransition.blend(1.62f,.76f,t,6);
+            check(height>=.75999f&&height<=1.62001f);
+            if(i==0)check(near(height,1.62f));
+            if(i==120)check(near(height,.76f));
+        }
+        float eps=.0001f;
+        check(Math.abs(StanceTransition.smooth(eps))<.000001);
+        check(Math.abs(1-StanceTransition.smooth(1-eps))<.000001);
         float slideEye=.87f;
         check(near(StanceTransition.height(slideEye,true,0,3),slideEye));
         check(StanceTransition.duration(slideEye,true)<StanceTransition.ENTER_TICKS);

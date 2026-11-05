@@ -1,12 +1,26 @@
 # 战地机动 · Battlefield Movement
 
-> Minecraft **1.21.1** ｜ NeoForge **21.1.233+** ｜ 版本 **1.7.14**
+> Minecraft **1.21.1** ｜ NeoForge **21.1.233+** ｜ 版本 **1.7.23**
 > `mod id: battlefield_movement` ｜ `package: cn.bfm`
 > 配套：BattlefieldOps **0.8.30-handoff**、TaCZ 1.1.8（可选）、PlayerAnimator 2.0.4（可选）
 
 **趴地动作直接移植自 `Tacz-Animation-Additions-1.2.12.jar`**：使用它的
 `prone_tactical_animations.json`（7 帧进入、7 帧退出、37 个每 10° 的角度姿态）以及同一套
 PlayerModel 姿态算法，而不是另画一套 PlayerAnimator 趴地动画。滑铲和飞扑是在此基础上新增的功能。
+
+### 1.7.23 滑铲镜头平滑、贴方块位置跳变、持枪摆臂、趴下速度
+
+四项独立修复，1.21.1 与 1.20.1 移植版同步。[说明](FIX-1.7.23.md)。
+
+- **滑铲第一人称镜头**：6 刻平滑进入、4 刻退出，替换原来按 `partial` 原始插值的硬切换。[说明](FIX-1.7.23.md#滑铲镜头平滑)
+- **贴着方块移动时的位置跳变**：`ProneGeometry.coverSafeEye` 的比较方向写反了，向前移动时把「插值眼看得更远」误判成需要回退，导致每刻大部分帧返回同一位置（量化到 20 Hz）。[说明](FIX-1.7.23.md#贴方块位置跳变)
+- **手持 TaCZ 枪械滑铲时双臂摆动**：TaCZ 动画在滑铲期间被取消，而 `steadyArms` 对枪械直接 `return`，手臂落回原版走路摆动。[说明](FIX-1.7.23.md#持枪摆臂)
+- **趴下速度与腿部动画速度可配**：新增 `speed_scale`（相对站立速度的倍率）与 `stride_speed`（爬行步频），替换语义含糊的 `speed_penalty`。[说明](FIX-1.7.23.md#趴下速度与步频)
+
+**配置变更（需要手动处理）**：`[prone] speed_penalty` 已移除，新键为 `speed_scale`（默认 `0.65`）与
+`stride_speed`（默认 `1.0`）。旧键不会自动迁移，若调过旧值请按 `speed_scale = 1 - 旧值` 换算。
+
+最新包：`build/libs/battlefield-movement-1.7.23-neoforge-1.21.1.jar`
 
 ### 1.5.6 动作期间瞄准与发射点
 

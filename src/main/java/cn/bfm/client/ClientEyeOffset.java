@@ -27,6 +27,8 @@ public final class ClientEyeOffset {
             }
             return 0.4F - desired;
         }
+        // Tick context, so the partial tick is 0 by definition. The per-frame interpolation the camera
+        // needs happens in CameraSmoother.eyeHeight(partial), which has the render frame's fraction.
         return SlideClient.cameraDrop(0.0F) + DiveClient.cameraDrop(0.0F);
     }
 

@@ -1,0 +1,11 @@
+适用于本次 hs_err_pid51044.log 中的 PlayerRenderer.getArmPose C2 编译代码崩溃现场。
+
+优先方案：在启动器里为该整合包选择已有 Java 21：
+C:\Program Files\Java\jdk-21\bin\javaw.exe
+
+如果暂时保留 Java 25，可在启动器的“额外 JVM 参数”增加下面一行：
+-XX:CompileCommand=exclude,net.minecraft.client.renderer.entity.player.PlayerRenderer::getArmPose
+
+参数仅用于禁止该方法被 JIT 编译，以绕过本次出错的编译代码路径；不是开启全局解释执行，也不是已验证的根因修复。
+若仍崩溃，需要新的 hs_err 文件；不要把其他 JVM 崩溃都套用此参数。
+本次没有自动改动启动器、Java 选择、游戏目录或其他模组。

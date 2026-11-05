@@ -31,10 +31,12 @@ public final class ActionEyeHeight {
                 return ProneManager.eyeHeight(server);
             }
             if (SlideServer.isSliding(player)) {
-                return slideHeight();
+                // Same entry curve as the client, so the bullet origin follows the camera down instead
+                // of jumping straight to the finished slide height on the first tick.
+                return SlideServer.eyeHeight(player);
             }
             if (DiveServer.isDiving(player)) {
-                return diveHeight();
+                return DiveServer.eyeHeight(player);
             }
             return -1.0F;
         }
@@ -43,11 +45,19 @@ public final class ActionEyeHeight {
         }
         if (player == net.minecraft.client.Minecraft.getInstance().player
                 && cn.bfm.client.SlideClient.isActive()) {
-            return cn.bfm.client.ServerEyeSettings.slide();
+            // The same entry curve the camera draws, so the aim ray and TaCZ's bullet origin sit exactly
+            // where the operator is looking instead of snapping to the finished height on tick one.
+            return cn.bfm.client.SlideClient.slideEye(0.0F);
+        }
+        if (player == net.minecraft.client.Minecraft.getInstance().player
+                && cn.bfm.client.SlideClient.settling()) {
+            // The exit curve as well: the slide is over, but the camera has a few ticks left to travel.
+            // Handing this to vanilla here would cut straight to the pose height.
+            return cn.bfm.client.SlideClient.exitEye(0.0F);
         }
         if (player == net.minecraft.client.Minecraft.getInstance().player
                 && cn.bfm.client.DiveClient.isActive()) {
-            return cn.bfm.client.ServerEyeSettings.dive();
+            return cn.bfm.client.DiveClient.eyeHeight(0);
         }
         return -1.0F;
     }

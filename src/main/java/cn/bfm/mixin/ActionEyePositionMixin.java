@@ -31,6 +31,8 @@ public abstract class ActionEyePositionMixin {
         boolean prone = ProneState.isProne(player);
         if (!prone && (!render || !player.level().isClientSide() || !ActionEyeHeight.overrides(player))) return;
         Vec3 origin = result.getReturnValue();
+        if(!prone && render && player.level().isClientSide() && cn.bfm.client.DiveClient.isActive())
+            origin=origin.add(0,cn.bfm.client.DiveClient.eyeHeight(partial)-player.getEyeHeight(),0);
         if (prone) {
             float height = player.getEyeHeight();
             if (player.level().isClientSide() && render) {
