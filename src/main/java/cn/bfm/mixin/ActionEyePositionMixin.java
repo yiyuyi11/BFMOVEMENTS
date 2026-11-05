@@ -37,9 +37,11 @@ public abstract class ActionEyePositionMixin {
                 height = cn.bfm.client.ProneClient.eyeHeight(player,partial);
                 origin = origin.add(0,height-player.getEyeHeight(),0);
             }
-            origin = ProneGeometry.headPosition(player,origin,ProneGeometry.bodyYaw(player,partial),StanceTransition.amount(height));
+            origin = ProneGeometry.headPosition(player,origin,ProneGeometry.bodyYaw(player,partial),StanceTransition.amount(height),partial);
         }
-        if (render && player.level().isClientSide() && partial < 1f)
+        // A prone head is already clipped against blocks. Snapping it to the
+        // next tick's eye near cover makes the camera jump at the tick boundary.
+        if (!prone && render && player.level().isClientSide() && partial < 1f)
             origin = ProneGeometry.coverSafeEye(player,origin,player.getEyePosition(),partial);
         result.setReturnValue(origin);
     }

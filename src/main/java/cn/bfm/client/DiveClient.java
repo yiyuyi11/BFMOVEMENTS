@@ -44,6 +44,13 @@ public final class DiveClient {
     public static void releaseStanceHold(){if(active||proneRequestTicks>0)standAfterLanding=true;}
     public static void keepProneOnLanding(){standAfterLanding=false;}
 
+    public static float extension(net.minecraft.world.entity.player.Player player, float partial) {
+        Long remoteStart = REMOTE.get(player.getId());
+        float age = player == Minecraft.getInstance().player ? ticks
+                : remoteStart == null ? 0 : player.level().getGameTime() - remoteStart;
+        return cn.bfm.StanceTransition.smooth((age + partial) / 5.0F);
+    }
+
     public static boolean isDiving(net.minecraft.world.entity.player.Player player) {
         if (player == null) {
             return false;
@@ -84,6 +91,7 @@ public final class DiveClient {
         active = true;
         standAfterLanding=false;
         ticks = 0;
+        cn.bfm.DiveGeometry.refresh(player);
         player.setSprinting(false);
         player.setDeltaMovement(dirX * speed, tuning.diveUp(), dirZ * speed);
         player.hasImpulse = true;        PacketDistributor.sendToServer(new DivePayload(true, 31));
@@ -199,14 +207,16 @@ public final class DiveClient {
         active = false;
         ticks = 0;
         cooldown = BfmConfig.DIVE_COOLDOWN_TICKS.get();
+        if (!standAfterLanding && ServerEyeSettings.tuning().prone()) {
+            // Hand collision ownership to prone before ending the dive.
+            ProneClient.predictProne();
+            PacketDistributor.sendToServer(new ProneRequestPayload(true, true));
+            proneRequestTicks = 8;
+        }
+        standAfterLanding = false;
         PacketDistributor.sendToServer(new DivePayload(false, 0));
         AnimController.onDive(player.getId(), false);
-        if (!ServerEyeSettings.tuning().prone()) return;
-        // Predict prone locally so the landing never shows a one-frame stand-up.
-        ProneClient.predictProne();
-        PacketDistributor.sendToServer(new ProneRequestPayload(true, true));
-        // The server may still see us as airborne for a tick; retry briefly.
-        proneRequestTicks = 8;
+        cn.bfm.DiveGeometry.refresh(player);
     }
 
     private static void cancel(LocalPlayer player) {

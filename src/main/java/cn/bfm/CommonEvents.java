@@ -23,6 +23,7 @@ public final class CommonEvents {
                 ProneGeometry.refresh(player);
             }
             SlideGeometry.refresh(player);
+            DiveGeometry.refresh(player);
         }
     }
 

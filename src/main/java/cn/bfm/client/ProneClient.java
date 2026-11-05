@@ -105,6 +105,9 @@ public final class ProneClient {
                 // accumulating a second vanilla swim -> stand transition.
                 SWIM_RELEASE.put(entityId, client.level.getGameTime() + 14L);
             }
+            if (removed != null && client.level != null
+                    && client.level.getEntity(entityId) instanceof Player subject
+                    && subject != client.player && !subject.hasPose(Pose.SWIMMING)) subject.refreshDimensions();
             if (client.player != null && entityId == client.player.getId()) {
                 if (localForced) {
                     client.player.setForcedPose(null);

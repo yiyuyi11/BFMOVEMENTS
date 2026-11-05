@@ -12,7 +12,7 @@ import org.joml.Vector3f;
 
 /** The original reclined slide, applied directly to the third-person model. */
 public final class SlidePoseRenderer {
-    public static void apply(AbstractClientPlayer player, PlayerModel<?> model, float partial) {
+    public static void apply(AbstractClientPlayer player, PlayerModel<?> model, float partial, float headYaw, float headPitch) {
         var mc = Minecraft.getInstance();
         if (player == mc.player && mc.options.getCameraType().isFirstPerson()) return;
         float amount = AnimController.slideWeight(player, partial);
@@ -21,6 +21,7 @@ public final class SlidePoseRenderer {
         // ModelPart rotates the torso at its top, but the slide rotates it
         // about the waist. Move the independent model pivots as a single rig.
         boolean crouch = cn.bfm.client.ServerEyeSettings.tuning().crouchSlide();
+        boolean knees = crouch && KneeBend.available();
         ModelPart torso = model.body;
         Quaternionf standing = new Quaternionf().rotationZYX(torso.zRot, torso.yRot, torso.xRot);
         Vector3f waistOffset = standing.transform(new Vector3f(0, 12, 0));
@@ -38,13 +39,19 @@ public final class SlidePoseRenderer {
         moveJoint(model.rightArm, waist, hips, change);
         moveJoint(model.leftLeg, waist, hips, change);
         moveJoint(model.rightLeg, waist, hips, change);
-        model.head.xRot += (crouch ? -8 : 16) * Mth.DEG_TO_RAD * amount;
+        // Shoulder movement carries the head pivot. Its rotation stays on the
+        // aim rather than inheriting the torso pitch or a fixed animation frame.
+        model.head.xRot = Mth.lerp(amount,model.head.xRot,headPitch*Mth.DEG_TO_RAD);
+        model.head.yRot = Mth.lerp(amount,model.head.yRot,headYaw*Mth.DEG_TO_RAD);
+        model.head.zRot *= 1-amount;
         steadyArms(player, model, amount, !crouch);
 
-        model.rightLeg.xRot = Mth.lerp(amount, model.rightLeg.xRot, (crouch ? -64 : -89) * Mth.DEG_TO_RAD);
-        model.leftLeg.xRot = Mth.lerp(amount, model.leftLeg.xRot, (crouch ? -81 : -92) * Mth.DEG_TO_RAD);
+        // Right thigh drops toward the floor; left knee leads the slide.
+        // Rigid-leg models use a shallower rear-leg angle to clear the ground.
+        model.rightLeg.xRot = Mth.lerp(amount,model.rightLeg.xRot,(crouch ? (knees ? 43 : 69) : -89)*Mth.DEG_TO_RAD);
+        model.leftLeg.xRot = Mth.lerp(amount,model.leftLeg.xRot,(crouch ? (knees ? -92 : -66) : -92)*Mth.DEG_TO_RAD);
         model.rightLeg.yRot = Mth.lerp(amount, model.rightLeg.yRot, 1 * Mth.DEG_TO_RAD);
-        model.leftLeg.yRot = Mth.lerp(amount, model.leftLeg.yRot, 15 * Mth.DEG_TO_RAD);
+        model.leftLeg.yRot = Mth.lerp(amount, model.leftLeg.yRot, (crouch ? 5 : 15) * Mth.DEG_TO_RAD);
         model.rightLeg.zRot = 2 * Mth.DEG_TO_RAD * amount;
         model.leftLeg.zRot = -6 * Mth.DEG_TO_RAD * amount;
 
@@ -54,6 +61,7 @@ public final class SlidePoseRenderer {
         model.rightSleeve.copyFrom(model.rightArm);
         model.leftPants.copyFrom(model.leftLeg);
         model.rightPants.copyFrom(model.rightLeg);
+        if (knees) KneeBend.apply(model,amount);
     }
 
     private static void steadyArms(AbstractClientPlayer player, PlayerModel<?> model, float amount, boolean braceGround) {
@@ -87,6 +95,27 @@ public final class SlidePoseRenderer {
     private static void moveJoint(ModelPart part, Vector3f waist, Vector3f hips, Quaternionf change) {
         Vector3f pivot = change.transform(new Vector3f(part.x, part.y, part.z).sub(waist)).add(hips);
         part.setPos(pivot.x, pivot.y, pivot.z);
+    }
+
+    private static final boolean PLAYER_ANIMATOR = net.neoforged.fml.ModList.get().isLoaded("playeranimator");
+
+    private static final class KneeBend {
+        static boolean available() {
+            return PLAYER_ANIMATOR && dev.kosmx.playerAnim.impl.Helper.isBendEnabled();
+        }
+
+        static void apply(PlayerModel<?> model,float amount) {
+            var bend = dev.kosmx.playerAnim.impl.animation.IBendHelper.INSTANCE;
+            float right = 46*Mth.DEG_TO_RAD*amount, left = 88*Mth.DEG_TO_RAD*amount;
+            bend.bend(model.rightLeg,0,right);
+            bend.bend(model.rightPants,0,right);
+            bend.bend(model.leftLeg,0,left);
+            bend.bend(model.leftPants,0,left);
+        }
+    }
+
+    public static void clearKnees(PlayerModel<?> model) {
+        if (KneeBend.available()) KneeBend.apply(model,0);
     }
 
     private SlidePoseRenderer() {}

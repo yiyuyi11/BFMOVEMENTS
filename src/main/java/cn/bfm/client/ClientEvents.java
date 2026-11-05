@@ -22,6 +22,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public final class ClientEvents {
     private static boolean proneHeld;
     private static boolean sneakHeld;
+    private static boolean jumpHeld;
+    private static boolean suppressJump;
     private static boolean desiredDown;
     private static long lastRequest=Long.MIN_VALUE;
     private static int slideBuffer;
@@ -46,6 +48,7 @@ public final class ClientEvents {
             proneHeld = false;
             slideHeld = false;
             sneakHeld = false;
+            jumpHeld = suppressJump = false;
             lastRequest=Long.MIN_VALUE;desiredDown=false;slideBuffer=0;
             return;
         }
@@ -66,9 +69,16 @@ public final class ClientEvents {
             PronePoseRenderer.reset();
             CameraSmoother.reset();
             AnimController.reset();
-            for (var subject : client.level.players()) cn.bfm.SlideGeometry.refresh(subject);
+            for (var subject : client.level.players()) {
+                cn.bfm.SlideGeometry.refresh(subject);
+                cn.bfm.DiveGeometry.refresh(subject);
+            }
             proneHeld = false;
             slideHeld = false;
+            jumpHeld = suppressJump = false;
+            desiredDown = false;
+            lastRequest = Long.MIN_VALUE;
+            slideBuffer = 0;
             return;
         }
         handleKeys(client);
@@ -78,6 +88,7 @@ public final class ClientEvents {
         for (var subject : client.level.players()) {
             cn.bfm.ProneGeometry.refresh(subject);
             cn.bfm.SlideGeometry.refresh(subject);
+            cn.bfm.DiveGeometry.refresh(subject);
         }
         PronePoseRenderer.tick(client);
         CameraSmoother.tick();
@@ -105,6 +116,9 @@ public final class ClientEvents {
             input.leftImpulse = 0.0F;
             input.jumping = false;
         }
+        if (ProneClient.isLocalProne() || suppressJump && Minecraft.getInstance().options.keyJump.isDown()) {
+            input.jumping = false;
+        }
         if (SlideClient.suppressSneak()) {
             input.shiftKeyDown = false;
         }
@@ -126,6 +140,7 @@ public final class ClientEvents {
         proneHeld = false;
         slideHeld = false;
         sneakHeld = false;
+        jumpHeld = suppressJump = false;
         lastRequest=Long.MIN_VALUE;desiredDown=false;slideBuffer=0;
     }
 
@@ -169,6 +184,8 @@ public final class ClientEvents {
             if(BfmConfig.PRONE_HOLD.get())DiveClient.releaseStanceHold();
             proneHeld = BfmKeys.PRONE.isDown();
             sneakHeld = client.options.keyShift.isDown();
+            jumpHeld = client.options.keyJump.isDown();
+            if (!jumpHeld) suppressJump = false;
             slideHeld = slideKeyboardDown(client);
             while(BfmKeys.SLIDE.consumeClick()){}
             slideBuffer=0;
@@ -178,6 +195,7 @@ public final class ClientEvents {
         boolean proneDown = BfmKeys.PRONE.isDown();
         if (proneDown && !proneHeld) {
             proneHeld = true;
+            slideBuffer = 0;
             pressProne(player);
         } else if (!proneDown && proneHeld) {
             proneHeld = false;
@@ -188,29 +206,50 @@ public final class ClientEvents {
         boolean pressed = keyboardDown && !slideHeld;
         slideHeld = keyboardDown;
         while (BfmKeys.SLIDE.consumeClick()) pressed = true;
-        if (pressed) {
-            if(ProneClient.phase(player)==ProneClient.EXITING)slideBuffer=8;
-            else if (!SlideClient.isActive() && !DiveClient.isActive()) {
+        boolean jumpDown = client.options.keyJump.isDown();
+        boolean sneakDown = client.options.keyShift.isDown();
+        boolean jumpPressed = jumpDown && !jumpHeld;
+        boolean sneakPressed = sneakDown && !sneakHeld;
+        jumpHeld = jumpDown;
+        sneakHeld = sneakDown;
+        if (!jumpDown) suppressJump = false;
+        if (!sneakDown) SlideClient.clearSneakSuppression();
+
+        if ((jumpPressed || sneakPressed) && (ProneClient.isLocalProne() || desiredDownIsPending(player)
+                || DiveClient.isActive() || DiveClient.awaitingLandingProne() || SlideClient.isActive())) {
+            slideBuffer = 0;
+            suppressJump = jumpPressed;
+            leaveLowStance(player);
+        } else if (pressed && ServerEyeSettings.tuning().slide()) {
+            if (ProneClient.isLocalProne() || desiredDownIsPending(player)
+                    || DiveClient.isActive() || DiveClient.awaitingLandingProne()) {
+                leaveLowStance(player);
+                slideBuffer = 20;
+            } else {
                 SlideClient.start(player);
             }
-        }
-        if(slideBuffer>0){
-            slideBuffer--;
-            if(!ProneClient.isLocalProne()&&SlideClient.canStart(player)){SlideClient.start(player);slideBuffer=0;}
+        } else if (sneakPressed && ServerEyeSettings.tuning().slideOnSneak()) {
+            SlideClient.start(player, true);
         }
 
-        // Sprint + sneak is the primary slide trigger. Sneak is edge-detected so
-        // holding it does not re-slide, and crouch is suppressed while sliding.
-        boolean sneakDown = client.options.keyShift.isDown();
-        if (sneakDown && !sneakHeld) {
-            sneakHeld = true;
-            if (!SlideClient.suppressSneak() && ServerEyeSettings.tuning().slideOnSneak()) {
-                SlideClient.start(player, true);
+        if (slideBuffer > 0) {
+            slideBuffer--;
+            if (!desiredDownIsPending(player) && !DiveClient.awaitingLandingProne() && SlideClient.canStart(player)) {
+                SlideClient.start(player);
+                slideBuffer = 0;
             }
-        } else if (!sneakDown && sneakHeld) {
-            sneakHeld = false;
-            SlideClient.clearSneakSuppression();
         }
+    }
+
+    private static boolean desiredDownIsPending(LocalPlayer player) {
+        long elapsed = player.level().getGameTime() - lastRequest;
+        return desiredDown && elapsed >= 0 && elapsed <= 8;
+    }
+
+    private static void leaveLowStance(LocalPlayer player) {
+        if (DiveClient.isActive() || DiveClient.awaitingLandingProne()) DiveClient.releaseStanceHold();
+        if (ProneClient.isLocalProne() || desiredDownIsPending(player)) requestProne(false);
+        if (SlideClient.isActive()) SlideClient.stop(player, true);
     }
 
     private static boolean slideKeyboardDown(Minecraft client) {
@@ -232,8 +271,8 @@ public final class ClientEvents {
             AnimController.onProne(player.getId(),ProneClient.ENTERING);
             return;
         }
-        if (DiveClient.isActive()) {
-            if(BfmConfig.PRONE_HOLD.get())DiveClient.keepProneOnLanding();
+        if (DiveClient.isActive() || DiveClient.awaitingLandingProne()) {
+            DiveClient.keepProneOnLanding();
             return;
         }
         long now=player.level().getGameTime();

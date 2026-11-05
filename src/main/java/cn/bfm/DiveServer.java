@@ -33,6 +33,7 @@ public final class DiveServer {
             LAST_BROADCAST.remove(player.getUUID());
             ACTIVE_UNTIL.remove(player.getUUID());
         }
+        DiveGeometry.refresh(player);
         PacketDistributor.sendToPlayersTrackingEntity(player,
                 new DiveSyncPayload(player.getId(), payload.active(), duration));
     }

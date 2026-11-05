@@ -16,7 +16,7 @@ public final class ServerEyeSettings {
         }
     }
     public static float slide() { return slide < 0 ? ActionEyeHeight.slideHeight() : slide; }
-    public static float dive() { return dive < 0 ? ActionEyeHeight.diveHeight() : dive; }
+    public static float dive() { return dive < 0 ? ActionEyeHeight.diveHeight() : Math.min(dive, (float) cn.bfm.DiveGeometry.HEIGHT - .12F); }
     public static void reset() { slide = dive = -1.0F; tuning = null; }
     private ServerEyeSettings() {}
 }
