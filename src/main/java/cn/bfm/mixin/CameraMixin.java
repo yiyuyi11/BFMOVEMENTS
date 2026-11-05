@@ -4,7 +4,6 @@ import cn.bfm.client.CameraSmoother;
 import cn.bfm.ActionEyeHeight;
 import net.minecraft.client.Camera;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.phys.Vec3;
@@ -22,7 +21,6 @@ public abstract class CameraMixin {
     private float eyeHeight;
     @Shadow
     private float eyeHeightOld;
-    @Shadow public abstract Vec3 getPosition();
     @Shadow protected abstract void setPosition(Vec3 position);
 
     @Unique
@@ -32,12 +30,9 @@ public abstract class CameraMixin {
             target = "Lnet/minecraft/client/Camera;setPosition(DDD)V", shift = At.Shift.AFTER))
     private void battlefieldMovement$proneHead(BlockGetter level, Entity entity, boolean detached,
                                                boolean thirdPerson, float partial, CallbackInfo ci) {
-        if (!(entity instanceof LocalPlayer player) || !cn.bfm.client.ProneClient.isProne(player)) return;
-        float amount = cn.bfm.client.ProneClient.amount(player, partial);
-        // The prone model lays the head ahead of the entity pivot. Follow the
-        // body's heading so free look doesn't orbit the view around the player.
-        float yaw = Mth.rotLerp(partial, player.yBodyRotO, player.yBodyRot);
-        setPosition(cn.bfm.ProneGeometry.headPosition(player,getPosition(),yaw,amount));
+        if (entity instanceof LocalPlayer player && ActionEyeHeight.overrides(player)) {
+            setPosition(player.getEyePosition(partial));
+        }
     }
 
     @Inject(method = "setup", at = @At("HEAD"))

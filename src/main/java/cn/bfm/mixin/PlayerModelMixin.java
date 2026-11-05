@@ -29,6 +29,14 @@ public abstract class PlayerModelMixin {
         model.rightArm.resetPose();
         model.leftLeg.resetPose();
         model.rightLeg.resetPose();
+        // A pose moved these off their pivots last frame. Vanilla only copies the arms and the torso onto
+        // them, so a leftover offset would leave a sleeve or the jacket floating behind.
+        model.hat.resetPose();
+        model.jacket.resetPose();
+        model.leftSleeve.resetPose();
+        model.rightSleeve.resetPose();
+        model.leftPants.resetPose();
+        model.rightPants.resetPose();
     }
 
     @Inject(method = "setupAnim(Lnet/minecraft/world/entity/LivingEntity;FFFFF)V", at = @At("TAIL"))
@@ -52,6 +60,8 @@ public abstract class PlayerModelMixin {
             if (cn.bfm.client.AnimController.ownsSlide(player)) {
                 battlefieldMovement$customPose = true;
                 cn.bfm.client.prone.SlidePoseRenderer.apply(player, model, ageInTicks - player.tickCount);
+            } else if (cn.bfm.client.prone.StandingGunPitch.apply(player, model, headPitch)) {
+                battlefieldMovement$customPose = true;
             }
         }
     }

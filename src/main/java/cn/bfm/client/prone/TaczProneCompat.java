@@ -51,6 +51,12 @@ public final class TaczProneCompat {
         }
     }
 
+    private static final boolean PLAYER_ANIMATOR = ModList.get().isLoaded("playeranimator");
+
+    public static boolean hasAuthoredHold(AbstractClientPlayer player) {
+        return AVAILABLE && PLAYER_ANIMATOR && Impl.hasAuthoredHold(player);
+    }
+
     static boolean isFirearm(net.minecraft.world.item.ItemStack stack) {
         if (stack.isEmpty()) return false;
         if (AVAILABLE && Impl.isGun(stack)) return true;
@@ -71,6 +77,13 @@ public final class TaczProneCompat {
             if (event.getShooter() instanceof AbstractClientPlayer player) {
                 LAST_SHOT.put(player.getUUID(), player.level().getGameTime());
             }
+        }
+
+        private static boolean hasAuthoredHold(AbstractClientPlayer player) {
+            if (!isGun(player.getMainHandItem())) return false;
+            var layers = dev.kosmx.playerAnim.minecraftApi.PlayerAnimationAccess.getPlayerAssociatedData(player);
+            var hold = layers.get(com.tacz.guns.compat.playeranimator.PlayerAnimatorCompat.LOOP_UPPER_ANIMATION);
+            return hold != null && hold.isActive();
         }
 
         private static boolean isGun(net.minecraft.world.item.ItemStack stack) {

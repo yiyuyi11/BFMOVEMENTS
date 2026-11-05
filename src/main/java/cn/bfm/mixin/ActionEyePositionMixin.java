@@ -3,7 +3,7 @@ package cn.bfm.mixin;
 import cn.bfm.ProneGeometry;
 import cn.bfm.ProneState;
 import cn.bfm.StanceTransition;
-import net.minecraft.util.Mth;
+import cn.bfm.ActionEyeHeight;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -17,24 +17,30 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class ActionEyePositionMixin {
     @Inject(method="getEyePosition()Lnet/minecraft/world/phys/Vec3;",at=@At("RETURN"),cancellable=true)
     private void battlefieldMovement$eye(CallbackInfoReturnable<Vec3> result) {
-        adjust(1f,result);
+        adjust(1f,false,result);
     }
 
     @Inject(method="getEyePosition(F)Lnet/minecraft/world/phys/Vec3;",at=@At("RETURN"),cancellable=true)
     private void battlefieldMovement$eye(float partial,CallbackInfoReturnable<Vec3> result) {
-        adjust(partial,result);
+        adjust(partial,true,result);
     }
 
     @org.spongepowered.asm.mixin.Unique
-    private void adjust(float partial,CallbackInfoReturnable<Vec3> result) {
-        if (!((Object)this instanceof Player player) || !ProneState.isProne(player)) return;
+    private void adjust(float partial,boolean render,CallbackInfoReturnable<Vec3> result) {
+        if (!((Object)this instanceof Player player)) return;
+        boolean prone = ProneState.isProne(player);
+        if (!prone && (!render || !player.level().isClientSide() || !ActionEyeHeight.overrides(player))) return;
         Vec3 origin = result.getReturnValue();
-        float height = player.getEyeHeight();
-        if (player.level().isClientSide()) {
-            height = cn.bfm.client.ProneClient.eyeHeight(player,partial);
-            origin = origin.add(0,height-player.getEyeHeight(),0);
+        if (prone) {
+            float height = player.getEyeHeight();
+            if (player.level().isClientSide() && render) {
+                height = cn.bfm.client.ProneClient.eyeHeight(player,partial);
+                origin = origin.add(0,height-player.getEyeHeight(),0);
+            }
+            origin = ProneGeometry.headPosition(player,origin,ProneGeometry.bodyYaw(player,partial),StanceTransition.amount(height));
         }
-        float yaw = Mth.rotLerp(partial,player.yBodyRotO,player.yBodyRot);
-        result.setReturnValue(ProneGeometry.headPosition(player,origin,yaw,StanceTransition.amount(height)));
+        if (render && player.level().isClientSide() && partial < 1f)
+            origin = ProneGeometry.coverSafeEye(player,origin,player.getEyePosition(),partial);
+        result.setReturnValue(origin);
     }
 }

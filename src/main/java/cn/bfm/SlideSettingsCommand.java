@@ -26,6 +26,7 @@ final class SlideSettingsCommand {
                 .then(Commands.literal("crouch").executes(ctx -> style(ctx.getSource(), true)))
                 .then(Commands.literal("reclined").executes(ctx -> style(ctx.getSource(), false))))
             .then(decimal("speed", .20, .80, BfmConfig.SLIDE_SPEED::set))
+            .then(decimal("min_speed", 0, 1, BfmConfig.SLIDE_MIN_SPEED::set))
             .then(decimal("distance", .5, 16, BfmConfig.SLIDE_DISTANCE::set))
             .then(decimal("friction", .70, 1, BfmConfig.SLIDE_FRICTION::set))
             .then(decimal("camera_drop", 0, 1.4, BfmConfig.SLIDE_CAMERA_DROP::set))
@@ -83,6 +84,7 @@ final class SlideSettingsCommand {
             .append(switchButton("滑铲特效", "particles", BfmConfig.SLIDE_PARTICLES.get())), false);
         source.sendSuccess(() -> Component.empty()
             .append(numberButton("速度", "speed", BfmConfig.SLIDE_SPEED.get()))
+            .append(numberButton("起步门槛", "min_speed", BfmConfig.SLIDE_MIN_SPEED.get()))
             .append(numberButton("距离", "distance", BfmConfig.SLIDE_DISTANCE.get()))
             .append(numberButton("速度保留率", "friction", BfmConfig.SLIDE_FRICTION.get()))
             .append(numberButton("镜头下降", "camera_drop", BfmConfig.SLIDE_CAMERA_DROP.get())),false);

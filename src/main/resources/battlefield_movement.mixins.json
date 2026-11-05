@@ -16,6 +16,7 @@
   "client": [
     "ProneSwimAnimationMixin",
     "CameraMixin",
+    "TaczShotPoseMixin",
     "PlayerModelMixin",
     "SlideCapeMixin",
     "PlayerRendererMixin",

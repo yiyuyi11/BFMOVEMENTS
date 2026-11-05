@@ -1,6 +1,6 @@
 # Battlefield Movement — Forge 1.20.1
 
-**Minecraft 1.20.1 ｜ Forge 47.4.16+ ｜ 版本 1.7.10-forge1201 ｜ MIT**
+**Minecraft 1.20.1 ｜ Forge 47.4.16+ ｜ 版本 1.7.14-forge1201 ｜ MIT**
 
 滑铲 / 飞扑 / 趴地 / 起身衔接 / 镜头平滑 / 自定义趴地姿态。1.21.1 版本在 `main` 分支。
 

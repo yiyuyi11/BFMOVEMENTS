@@ -11,6 +11,7 @@ public final class BfmConfig {
     public static final ForgeConfigSpec.BooleanValue SLIDE_ENABLED;
     public static final ForgeConfigSpec.BooleanValue SLIDE_ON_SNEAK;
     public static final ForgeConfigSpec.DoubleValue SLIDE_SPEED;
+    public static final ForgeConfigSpec.DoubleValue SLIDE_MIN_SPEED;
     public static final ForgeConfigSpec.DoubleValue SLIDE_DISTANCE;
     public static final ForgeConfigSpec.BooleanValue SLIDE_CROUCH_STYLE;
     public static final ForgeConfigSpec.DoubleValue SLIDE_FRICTION;
@@ -42,6 +43,8 @@ public final class BfmConfig {
                 .define("sprint_sneak_starts_slide", true);
         SLIDE_SPEED = b.comment("Initial slide speed in blocks per tick (0.46 ~ 9 m/s).")
                 .defineInRange("speed", 0.46D, 0.20D, 0.80D);
+        SLIDE_MIN_SPEED = b.comment("Minimum horizontal speed to start sliding, in blocks per tick.")
+                .defineInRange("min_speed", 0.06D, 0D, 1D);
         SLIDE_DISTANCE = b.comment("Maximum horizontal travel in blocks.").defineInRange("distance", 4.0D, .5D, 16D);
         SLIDE_CROUCH_STYLE = b.comment("Use the Battlefield 1-style crouched slide instead of the reclined slide.")
                 .define("crouch_style", true);
