@@ -32,6 +32,7 @@ public final class DiveServer {
             LAST_BROADCAST.remove(player.getUUID());
             ACTIVE_UNTIL.remove(player.getUUID());
         }
+        DiveGeometry.refresh(player);
         cn.bfm.BfmNetwork.sendToPlayersTrackingEntity(player,
                 new DiveSyncPayload(player.getId(), payload.active(), duration));
     }

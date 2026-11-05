@@ -10,17 +10,20 @@ import net.minecraft.world.phys.Vec3;
 public final class ProneGeometry {
     public static final double MODEL_CENTER_SHIFT = .10;
     public static final double HEAD_FORWARD = .50 + MODEL_CENTER_SHIFT;
+    private static final float FREE_LOOK_DEGREES = 35.0F;
+    private static final double HEAD_CLEARANCE = .08;
+    private static final double HEAD_RECOVERY_PER_TICK = .06;
     private static final double HALF_LENGTH = .72;
     private static final double HALF_WIDTH = .29;
 
-    private record Heading(float previous,float current) {}
+    private record Heading(float previous, float current, double previousReach, double currentReach) {}
     private static final java.util.Map<Player,Heading> HEADINGS =
             java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
 
     public static float bodyYaw(Player player,float partial) {
         Heading heading = HEADINGS.get(player);
-        return heading == null ? Mth.rotLerp(partial,player.yBodyRotO,player.yBodyRot)
-                : Mth.rotLerp(partial,heading.previous(),heading.current());
+        return heading == null ? player.getViewYRot(partial)
+                : Mth.rotLerp(partial, heading.previous(), heading.current());
     }
 
     private static void updateHeading(Player player) {
@@ -29,9 +32,19 @@ public final class ProneGeometry {
             return;
         }
         HEADINGS.compute(player,(key,old) -> {
-            float previous = old == null ? player.yBodyRotO : old.current();
-            float turn = Mth.clamp(Mth.wrapDegrees(player.yBodyRot-previous),-9f,9f);
-            return new Heading(previous,previous+turn);
+            float previous = old == null ? player.getYRot() : old.current();
+            // Vanilla body yaw follows movement, even when the player holds
+            // the view still. A prone eye is offset from the center, so that
+            // yaw would also move the camera and turn the collision envelope.
+            float difference = Mth.wrapDegrees(player.getYRot() - previous);
+            float excess = Math.max(0.0F, Math.abs(difference) - FREE_LOOK_DEGREES);
+            float turn = Math.copySign(Math.min(9.0F, excess * .35F), difference);
+            float current = previous + turn;
+            double limit = headClearance(player, player.position().add(0, player.getEyeHeight(), 0),
+                    forward(current), HEAD_FORWARD);
+            double previousReach = old == null ? limit : old.currentReach();
+            double currentReach = Math.min(limit, previousReach + HEAD_RECOVERY_PER_TICK);
+            return new Heading(previous, current, previousReach, currentReach);
         });
     }
 
@@ -65,23 +78,42 @@ public final class ProneGeometry {
         return base.inflate(growX, 0, growZ);
     }
 
-    public static Vec3 headPosition(Player player, Vec3 origin, float yaw, float amount) {
-        double distance = HEAD_FORWARD * net.minecraft.util.Mth.clamp(amount,0f,1f);
+    public static Vec3 headPosition(Player player, Vec3 origin, float yaw, float amount, float partial) {
+        double distance = HEAD_FORWARD * Mth.clamp(amount, 0f, 1f);
+        Heading heading = HEADINGS.get(player);
+        if (heading != null) {
+            distance = Math.min(distance, Mth.lerp(partial, heading.previousReach(), heading.currentReach()));
+        }
         if (distance < .001) return origin;
         Vec3 direction = forward(yaw);
+        return origin.add(direction.scale(headClearance(player, origin, direction, distance)));
+    }
+
+    private static double headClearance(Player player, Vec3 origin, Vec3 direction, double distance) {
         Vec3 target = origin.add(direction.scale(distance));
-        var hit = player.level().clip(new net.minecraft.world.level.ClipContext(origin,target,
-                net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,player));
-        return hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS ? target
-                : origin.add(direction.scale(Math.max(0,origin.distanceTo(hit.getLocation())-.08)));
+        AABB sweep = new AABB(origin, target).inflate(HEAD_CLEARANCE);
+        double limit = distance;
+        // Sweep a small volume around the eye. A center ray can miss an edge
+        // for one frame and let the view jump all the way past the cover.
+        for (var shape : player.level().getBlockCollisions(player, sweep)) {
+            for (AABB box : shape.toAabbs()) {
+                AABB expanded = box.inflate(HEAD_CLEARANCE);
+                if (expanded.contains(origin)) return 0;
+                var hit = expanded.clip(origin, target);
+                if (hit.isPresent()) limit = Math.min(limit, origin.distanceTo(hit.get()));
+            }
+        }
+        return limit;
     }
 
     private static boolean active(Player player) {
-        return ProneState.isProne(player) && player.hasPose(Pose.SWIMMING);
+        return ProneState.isProne(player);
     }
 
     public static AABB selectBox(Player player, AABB base) {
         if (!active(player)) return base;
+        base = player.getDimensions(Pose.SWIMMING).makeBoundingBox(
+                new Vec3((base.minX+base.maxX)*.5,base.minY,(base.minZ+base.maxZ)*.5));
         float eye = player.level().isClientSide()
                 ? cn.bfm.client.ProneClient.eyeHeight(player)
                 : player instanceof net.minecraft.server.level.ServerPlayer server ? ProneManager.eyeHeight(server) : StanceTransition.PRONE_EYE;
@@ -116,7 +148,7 @@ public final class ProneGeometry {
 
     public static void refresh(Player player) {
         updateHeading(player);
-        if (!player.hasPose(Pose.SWIMMING)) return;
+        if (!player.hasPose(Pose.SWIMMING) && !active(player)) return;
         AABB base = player.getDimensions(Pose.SWIMMING).makeBoundingBox(player.position());
         AABB current = player.getBoundingBox();
         if (!active(player) && current.getXsize() <= base.getXsize() + .001

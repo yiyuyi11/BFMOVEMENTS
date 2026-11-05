@@ -22,38 +22,41 @@ import java.util.Map;
  * window, so the body is visibly horizontal in third person.</p>
  */
 public final class DivePoseRenderer {
-    private static final Map<Integer, Float> YAW = new HashMap<>();
+    private record Frame(float yaw, float extension) {}
+    private static final Map<Integer, Frame> FRAMES = new HashMap<>();
 
     public static void begin(AbstractClientPlayer player, PoseStack stack, float partial) {
         if (!cn.bfm.BattlefieldMovement.enabled()) return;
         if (!DiveClient.isDiving(player)) {
-            YAW.remove(player.getId());
+            FRAMES.remove(player.getId());
             return;
         }
-        YAW.put(player.getId(), Mth.lerp(partial, player.yBodyRotO, player.yBodyRot));
+        FRAMES.put(player.getId(), new Frame(cn.bfm.DiveGeometry.yaw(player), DiveClient.extension(player, partial)));
     }
 
     public static void end(AbstractClientPlayer player) {
-        YAW.remove(player.getId());
+        FRAMES.remove(player.getId());
     }
 
     public static boolean active(AbstractClientPlayer player) {
-        return YAW.containsKey(player.getId());
+        return FRAMES.containsKey(player.getId());
     }
 
     public static boolean applyRoot(AbstractClientPlayer player, PoseStack stack) {
-        Float yaw = YAW.get(player.getId());
-        if (yaw == null) {
+        Frame frame = FRAMES.get(player.getId());
+        if (frame == null) {
             return false;
         }
-        stack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
-        stack.mulPose(Axis.XP.rotationDegrees(-72.0F));
-        stack.translate(0.0D, -0.32D, 0.18D);
+        stack.mulPose(Axis.YP.rotationDegrees(180.0F - frame.yaw()));
+        stack.translate(0.0D, 0.0D, -cn.bfm.ProneGeometry.MODEL_CENTER_SHIFT);
+        stack.mulPose(Axis.XP.rotationDegrees(Mth.lerp(frame.extension(), -68.0F, -90.0F)));
+        stack.translate(0.0D, -1.0D, 0.15D);
         return true;
     }
 
     public static void applyPose(AbstractClientPlayer player, PlayerModel<?> model) {
-        if (!YAW.containsKey(player.getId())) {
+        Frame frame = FRAMES.get(player.getId());
+        if (frame == null) {
             return;
         }
         Minecraft client = Minecraft.getInstance();
@@ -64,13 +67,14 @@ public final class DivePoseRenderer {
                 model.leftLeg, model.rightLeg)) {
             part.resetPose();
         }
-        model.head.xRot = (float) Math.toRadians(42.0D);
-        model.leftArm.xRot = (float) Math.toRadians(166.0D);
-        model.rightArm.xRot = (float) Math.toRadians(166.0D);
+        float headPitch = Mth.lerp(frame.extension(), 42.0F, 58.0F) + player.getXRot() * .55F;
+        model.head.xRot = Mth.clamp(headPitch, 16.0F, 82.0F) * Mth.DEG_TO_RAD;
+        model.leftArm.xRot = Mth.lerp(frame.extension(), -118.0F, -155.0F) * Mth.DEG_TO_RAD;
+        model.rightArm.xRot = Mth.lerp(frame.extension(), -85.0F, -147.0F) * Mth.DEG_TO_RAD;
         model.leftArm.zRot = (float) Math.toRadians(-8.0D);
         model.rightArm.zRot = (float) Math.toRadians(8.0D);
-        model.leftLeg.xRot = (float) Math.toRadians(5.0D);
-        model.rightLeg.xRot = (float) Math.toRadians(5.0D);
+        model.leftLeg.xRot = Mth.lerp(frame.extension(), -19.0F, 4.0F) * Mth.DEG_TO_RAD;
+        model.rightLeg.xRot = Mth.lerp(frame.extension(), 24.0F, 2.0F) * Mth.DEG_TO_RAD;
         model.leftLeg.zRot = (float) Math.toRadians(-4.0D);
         model.rightLeg.zRot = (float) Math.toRadians(4.0D);
         model.jacket.copyFrom(model.body);

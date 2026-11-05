@@ -14,7 +14,7 @@ public final class ActionEyeHeight {
     }
 
     public static float diveHeight() {
-        return Math.max(0.08F, 1.62F - (float) (double) BfmConfig.DIVE_CAMERA_DROP.get());
+        return net.minecraft.util.Mth.clamp(1.62F - (float) (double) BfmConfig.DIVE_CAMERA_DROP.get(), 0.08F, (float) DiveGeometry.HEIGHT - .12F);
     }
     public static boolean overrides(Player player) {
         return target(player) >= 0.0F;

@@ -35,6 +35,10 @@ public final class StandingGunPitch {
         if (player.isFallFlying() || player.isVisuallySwimming() || !TaczProneCompat.hasAuthoredHold(player)) {
             return false;
         }
+        // The authored layer can also keyframe the head at level aim.
+        // Use the render-time aim angle as the absolute head pitch.
+        model.head.xRot = pitchDegrees * Mth.DEG_TO_RAD;
+        model.hat.copyFrom(model.head);
         float pitch = Mth.clamp(pitchDegrees, -MAX_PITCH, MAX_PITCH) * Mth.DEG_TO_RAD;
         if (Math.abs(pitch) < 0.001F) return false;
 

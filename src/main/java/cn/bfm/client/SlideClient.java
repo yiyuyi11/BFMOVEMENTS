@@ -25,9 +25,12 @@ import java.util.Map;
 public final class SlideClient {
     private static final double MIN_SPEED = 0.12D;
 
+    private static final int STEP_AIR_TICKS = 5;
+
     private static boolean active;
     private static boolean suppressSneak;
     private static int ticks;
+    private static int airTicks;
     private static int cooldown;
     private static double speed, travelled, lastX, lastZ;
     private static double dirX;
@@ -100,6 +103,7 @@ public final class SlideClient {
         dirZ = direction[1];
         active = true;
         ticks = 0;
+        airTicks = 0;
         suppressSneak = viaSneak;
         player.setSprinting(false);
         cn.bfm.BfmNetwork.sendToServer(
@@ -126,11 +130,14 @@ public final class SlideClient {
         LocalPlayer player = client.player;
         if (active && player != null) {
             ticks++;
-            boolean invalid = !ServerEyeSettings.tuning().slide() || !player.onGround() || player.isInWater() || player.isPassenger()
+            // Losing support briefly at a step edge should not end a grounded slide.
+            airTicks = player.onGround() ? 0 : airTicks + 1;
+            boolean invalid = !ServerEyeSettings.tuning().slide() || airTicks > STEP_AIR_TICKS
+                    || player.isInWater() || player.isPassenger()
                     || player.horizontalCollision || ticks >= ServerEyeSettings.tuning().slideTicks();
             if (invalid) {
                 stop(player, true);
-            } else if (ServerEyeSettings.tuning().slideParticles() && ticks % 2 == 0) {
+            } else if (player.onGround() && ServerEyeSettings.tuning().slideParticles() && ticks % 2 == 0) {
                 burst(player, 2);
             }
         } else if (active) {
@@ -176,6 +183,7 @@ public final class SlideClient {
         }
         active = false;
         ticks = 0;
+        airTicks = 0;
         // The suppression only exists for the duration of the slide. If sneak
         // is still physically held now, letting it through means the player
         // settles into crouch; if it was released, the player stands up.
@@ -211,6 +219,7 @@ public final class SlideClient {
         active = false;
         suppressSneak = false;
         ticks = 0;
+        airTicks = 0;
         cooldown = 0;
         speed = 0.0D;
         camera = 0.0F;

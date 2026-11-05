@@ -16,6 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PlayerModelMixin {
     @Unique
     private boolean battlefieldMovement$customPose;
+    @Unique private boolean battlefieldMovement$slidePose;
 
     @Inject(method = "setupAnim(Lnet/minecraft/world/entity/LivingEntity;FFFFF)V", at = @At("HEAD"))
     private void battlefieldMovement$restorePivots(LivingEntity entity, float limbSwing, float limbSwingAmount,
@@ -23,6 +24,10 @@ public abstract class PlayerModelMixin {
         if (!battlefieldMovement$customPose) return;
         battlefieldMovement$customPose = false;
         PlayerModel<?> model = (PlayerModel<?>) (Object) this;
+        if (battlefieldMovement$slidePose) {
+            cn.bfm.client.prone.SlidePoseRenderer.clearKnees(model);
+            battlefieldMovement$slidePose = false;
+        }
         model.head.resetPose();
         model.body.resetPose();
         model.leftArm.resetPose();
@@ -59,7 +64,8 @@ public abstract class PlayerModelMixin {
             PronePoseRenderer.clearRoll(model);
             if (cn.bfm.client.AnimController.ownsSlide(player)) {
                 battlefieldMovement$customPose = true;
-                cn.bfm.client.prone.SlidePoseRenderer.apply(player, model, ageInTicks - player.tickCount);
+                battlefieldMovement$slidePose = true;
+                cn.bfm.client.prone.SlidePoseRenderer.apply(player, model, ageInTicks - player.tickCount, netHeadYaw, headPitch);
             } else if (cn.bfm.client.prone.StandingGunPitch.apply(player, model, headPitch)) {
                 battlefieldMovement$customPose = true;
             }

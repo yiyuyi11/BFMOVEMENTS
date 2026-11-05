@@ -96,13 +96,6 @@ public final class ProneManager {
                 broadcast(player);
             }
         } else if (entry.phase() == PRONE) {
-            // Do not auto-stand on a transient onGround flicker. Falling off a
-            // ledge is the only case we still handle automatically, and only
-            // after the stance has settled.
-            if (elapsed > 10L && player.getDeltaMovement().y < -0.15D) {
-                startExit(player);
-                return;
-            }
             player.setForcedPose(Pose.SWIMMING);
         } else if (entry.phase() == EXITING) {
             if (!canStand(player)) {
@@ -166,15 +159,6 @@ public final class ProneManager {
         if (entry != null) {
             send(viewer, payload(subject, entry));
         }
-    }
-
-    private static void startExit(ServerPlayer player) {
-        if (!canStand(player)) {
-            return;
-        }
-        float from=eyeHeight(player);
-        ACTIVE.put(player.getUUID(), new Entry(EXITING, now(player),StanceTransition.duration(from,false),from));
-        broadcast(player);
     }
 
     private static void finish(ServerPlayer player) {

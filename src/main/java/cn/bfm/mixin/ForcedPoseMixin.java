@@ -6,6 +6,7 @@ import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -19,6 +20,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Player.class)
 public abstract class ForcedPoseMixin {
     // Forge adds this method; it has no vanilla obfuscation mapping.
+    @ModifyVariable(method = "setForcedPose", at = @At("HEAD"), argsOnly = true, remap = false)
+    private Pose battlefieldMovement$keepPronePose(Pose requested) {
+        if ((requested == Pose.STANDING || requested == Pose.CROUCHING)
+                && ProneState.isProne((Player)(Object)this)) return Pose.SWIMMING;
+        return requested;
+    }
+
     @Inject(method = "setForcedPose", at = @At("HEAD"), cancellable = true, require = 1, remap = false)
     private void battlefieldMovement$protectPronePose(Pose pose, CallbackInfo ci) {
         if (pose == null && ProneState.isProne((Player) (Object) this)) {
