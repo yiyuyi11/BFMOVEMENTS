@@ -9,7 +9,7 @@
 `clean build` 通过（ForgeGradle 6.0.54 / Java 17 / Gradle 8.8），产物：
 
 ```
-build/libs/battlefield_movement-1.7.10-forge1201.jar
+build/libs/battlefield_movement-1.7.14-forge1201.jar
 ```
 
 - MixinGradle 生成 SRG refmap 并打包；
