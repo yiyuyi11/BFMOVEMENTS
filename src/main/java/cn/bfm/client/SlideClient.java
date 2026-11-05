@@ -62,7 +62,8 @@ public final class SlideClient {
 
     public static boolean canStart(LocalPlayer player) {
         double horizontal = Math.hypot(player.getDeltaMovement().x, player.getDeltaMovement().z);
-        if (!ServerEyeSettings.tuning().slide() || active || cooldown > 0
+        var tuning = ServerEyeSettings.tuning();
+        if (!tuning.slide() || horizontal < tuning.slideMinSpeed() || active || cooldown > 0
                 || ProneClient.isLocalProne() || DiveClient.isActive()) {
             return false;
         }
@@ -75,10 +76,10 @@ public final class SlideClient {
         }
         // Sprinting is the intended trigger, but sneaking cancels the sprint flag one
         // tick before this check runs. High horizontal speed is the reliable signal.
-        if (ServerEyeSettings.tuning().slideRequireSprint() && !player.isSprinting() && horizontal < 0.12D) {
+        if (tuning.slideRequireSprint() && !player.isSprinting() && horizontal < 0.12D) {
             return false;
         }
-        return player.isSprinting() || horizontal > 0.06D;
+        return true;
     }
 
     public static void start(LocalPlayer player) {

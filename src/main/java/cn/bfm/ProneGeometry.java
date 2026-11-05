@@ -13,6 +13,44 @@ public final class ProneGeometry {
     private static final double HALF_LENGTH = .72;
     private static final double HALF_WIDTH = .29;
 
+    private record Heading(float previous,float current) {}
+    private static final java.util.Map<Player,Heading> HEADINGS =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+    public static float bodyYaw(Player player,float partial) {
+        Heading heading = HEADINGS.get(player);
+        return heading == null ? Mth.rotLerp(partial,player.yBodyRotO,player.yBodyRot)
+                : Mth.rotLerp(partial,heading.previous(),heading.current());
+    }
+
+    private static void updateHeading(Player player) {
+        if (!active(player)) {
+            HEADINGS.remove(player);
+            return;
+        }
+        HEADINGS.compute(player,(key,old) -> {
+            float previous = old == null ? player.yBodyRotO : old.current();
+            float turn = Mth.clamp(Mth.wrapDegrees(player.yBodyRot-previous),-9f,9f);
+            return new Heading(previous,previous+turn);
+        });
+    }
+
+    // Prevent render interpolation from looking past a nearby obstruction
+    // that still blocks the shot from the current simulation eye.
+    public static Vec3 coverSafeEye(Player player,Vec3 interpolated,Vec3 current,float partial) {
+        if (interpolated.distanceToSqr(current) < .000025) return interpolated;
+        Vec3 ray = player.getViewVector(partial).scale(4);
+        double currentReach = reach(player,current,ray);
+        if (currentReach >= 4) return interpolated;
+        return reach(player,interpolated,ray) > currentReach+.16 ? current : interpolated;
+    }
+
+    private static double reach(Player player,Vec3 start,Vec3 ray) {
+        var hit = player.level().clip(new net.minecraft.world.level.ClipContext(start,start.add(ray),
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,player));
+        return hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS ? 4 : start.distanceTo(hit.getLocation());
+    }
+
     public static Vec3 forward(float yaw) {
         double radians = Math.toRadians(yaw);
         return new Vec3(-Math.sin(radians), 0, Math.cos(radians));
@@ -49,15 +87,26 @@ public final class ProneGeometry {
                 : player instanceof net.minecraft.server.level.ServerPlayer server ? ProneManager.eyeHeight(server) : StanceTransition.PRONE_EYE;
         float amount = Mth.clamp(StanceTransition.amount(eye), 0f, 1f);
         if (amount < .001f) return base;
-        AABB target = envelope(base, player.yBodyRot, amount);
-        // Don't grow the box into a wall when a player turns or transitions.
-        if (fits(player, target)) return target;
+        AABB target = envelope(base, bodyYaw(player,1f), amount);
         AABB current = player.getBoundingBox();
-        AABB previous = new AABB(player.getX() - current.getXsize() * .5, base.minY,
-                player.getZ() - current.getZsize() * .5, player.getX() + current.getXsize() * .5,
-                base.maxY, player.getZ() + current.getZsize() * .5);
-        if (previous.getXsize() + previous.getZsize() <= target.getXsize() + target.getZsize()
-                && fits(player, previous)) return previous;
+        if (current == null) return fits(player, target) ? target : base;
+        AABB previous = base.inflate(
+                Math.max(0, (current.getXsize() - base.getXsize()) * .5), 0,
+                Math.max(0, (current.getZsize() - base.getZsize()) * .5));
+        boolean settled = amount >= .999f;
+        boolean keepPrevious = fits(player, previous);
+        double dx = target.getXsize() - previous.getXsize();
+        double dz = target.getZsize() - previous.getZsize();
+        if (settled && keepPrevious) {
+            // Ignore tiny body-yaw changes, and require spare clearance before
+            // expanding again near a wall. Contraction remains immediate.
+            if (Math.abs(dx) < .025 && Math.abs(dz) < .025) return previous;
+            AABB clearance = target.inflate(dx > 0 ? .025 : 0, 0, dz > 0 ? .025 : 0);
+            if (!fits(player, clearance)) return previous;
+            return target;
+        }
+        if (fits(player, target)) return target;
+        if (keepPrevious && dx + dz >= 0) return previous;
         return base;
     }
 
@@ -66,6 +115,7 @@ public final class ProneGeometry {
     }
 
     public static void refresh(Player player) {
+        updateHeading(player);
         if (!player.hasPose(Pose.SWIMMING)) return;
         AABB base = player.getDimensions(Pose.SWIMMING).makeBoundingBox(player.position());
         AABB current = player.getBoundingBox();

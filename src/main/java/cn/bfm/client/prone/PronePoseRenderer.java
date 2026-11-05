@@ -97,7 +97,7 @@ public final class PronePoseRenderer {
             motion.previousForward = motion.forward;
             motion.previousSide = motion.side;
             if (moving) {
-                double yaw = Math.toRadians(player.yBodyRot);
+                double yaw = Math.toRadians(cn.bfm.ProneGeometry.bodyYaw(player,1f));
                 motion.forward = Mth.lerp(.38, motion.forward, (-dx * Math.sin(yaw) + dz * Math.cos(yaw)) / distance);
                 motion.side = Mth.lerp(.38, motion.side, (dx * Math.cos(yaw) + dz * Math.sin(yaw)) / distance);
                 motion.phase += distance * 7.5;
@@ -133,7 +133,7 @@ public final class PronePoseRenderer {
             if(last!=null)ENTER_POSE.put(player.getId(),last.clone());
         }else if(phase!=ProneClient.ENTERING){ENTER_POSE.remove(player.getId());ENTER_ROLL.remove(player.getId());}
         float progress = ProneClient.progress(player, partial);
-        float anchor = Mth.rotLerp(partial, player.yBodyRotO, player.yBodyRot);
+        float anchor = cn.bfm.ProneGeometry.bodyYaw(player,partial);
         float headYaw = Mth.rotLerp(partial, player.yHeadRotO, player.yHeadRot);
         float aim = Mth.wrapDegrees(headYaw - anchor);
         boolean transition = phase == ProneClient.ENTERING || phase == ProneClient.EXITING;
