@@ -13,3 +13,5 @@ build/
 libs/
 run/
 logs/
+
+.gradle-home/
